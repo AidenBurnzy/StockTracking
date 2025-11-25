@@ -192,10 +192,17 @@ function App() {
       // Get current portfolio value at the time of investment
       const portfolioAtInvestment = getLatestPortfolio();
       
-      // Use CURRENT capital values (before update) for calculations
-      const oldNickCapital = nickCapital;
-      const oldJoeyCapital = joeyCapital;
-      const oldTotalCapital = oldNickCapital + oldJoeyCapital;
+      // Get current ownership from the latest entry (not from capital table)
+      let oldNickOwnership, oldJoeyOwnership;
+      if (entries.length > 0) {
+        oldNickOwnership = parseFloat(entries[0].nick_ownership);
+        oldJoeyOwnership = parseFloat(entries[0].joey_ownership);
+      } else {
+        // No entries yet, calculate from capital
+        const totalCapital = nickCapital + joeyCapital;
+        oldNickOwnership = totalCapital > 0 ? (nickCapital / totalCapital) * 100 : 100;
+        oldJoeyOwnership = totalCapital > 0 ? (joeyCapital / totalCapital) * 100 : 0;
+      }
       
       const newNickCapital = capitalPerson === 'nick' ? nickCapital + amount : nickCapital;
       const newJoeyCapital = capitalPerson === 'joey' ? joeyCapital + amount : joeyCapital;
@@ -213,11 +220,7 @@ function App() {
         nickValue = capitalPerson === 'nick' ? amount : 0;
         joeyValue = capitalPerson === 'joey' ? amount : 0;
       } else {
-        // Calculate current ownership using OLD capital values
-        const oldNickOwnership = oldTotalCapital > 0 ? (oldNickCapital / oldTotalCapital) * 100 : 100;
-        const oldJoeyOwnership = oldTotalCapital > 0 ? (oldJoeyCapital / oldTotalCapital) * 100 : 0;
-        
-        // Current values stay the same (they're locked in at portfolioAtInvestment)
+        // Current values based on ownership at time of investment
         const nickCurrentValue = (portfolioAtInvestment * oldNickOwnership) / 100;
         const joeyCurrentValue = (portfolioAtInvestment * oldJoeyOwnership) / 100;
         
@@ -227,7 +230,7 @@ function App() {
           // Joey's value stays the same
           joeyValue = joeyCurrentValue;
         } else {
-          // Joey adds capital - his value is exactly the amount invested
+          // Joey adds capital - his value increases by the amount invested
           joeyValue = joeyCurrentValue + amount;
           // Nick's value stays the same - calculate precisely to avoid rounding errors
           nickValue = newPortfolio - joeyValue;
