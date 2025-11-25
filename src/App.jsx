@@ -180,8 +180,8 @@ function App() {
       const newNickCapital = capitalPerson === 'nick' ? nickCapital + amount : nickCapital;
       const newJoeyCapital = capitalPerson === 'joey' ? joeyCapital + amount : joeyCapital;
       
-      // The new portfolio value is: existing portfolio + new capital
-      const newPortfolio = portfolioAtInvestment + amount;
+      // Portfolio stays the same - new investor is buying into existing portfolio
+      const newPortfolio = portfolioAtInvestment;
       
       // Calculate ownership and values
       let nickOwnership, joeyOwnership, nickValue, joeyValue;
@@ -193,25 +193,29 @@ function App() {
         nickValue = capitalPerson === 'nick' ? amount : 0;
         joeyValue = capitalPerson === 'joey' ? amount : 0;
       } else {
-        // Someone is adding capital to an existing portfolio
-        // The person adding capital gets their money added as their value
-        // The existing person's value stays the same
+        // Someone is buying into the existing portfolio
+        // Their ownership = their investment / current portfolio value
+        // Existing owners' values get reduced proportionally
         
         const currentStats = calculateStats(portfolioAtInvestment);
         
         if (capitalPerson === 'nick') {
-          // Nick adds capital
-          nickValue = currentStats.nickValue + amount;
-          joeyValue = currentStats.joeyValue; // Joey's value unchanged
+          // Nick is adding more capital
+          const nickNewOwnershipPercent = (amount / portfolioAtInvestment) * 100;
+          nickOwnership = currentStats.nickOwnership + nickNewOwnershipPercent;
+          joeyOwnership = currentStats.joeyOwnership * (1 - (amount / portfolioAtInvestment));
+          
+          nickValue = (portfolioAtInvestment * nickOwnership) / 100;
+          joeyValue = (portfolioAtInvestment * joeyOwnership) / 100;
         } else {
-          // Joey adds capital
-          nickValue = currentStats.nickValue; // Nick's value unchanged  
-          joeyValue = currentStats.joeyValue + amount;
+          // Joey is buying into the portfolio
+          const joeyNewOwnershipPercent = (amount / portfolioAtInvestment) * 100;
+          joeyOwnership = currentStats.joeyOwnership + joeyNewOwnershipPercent;
+          nickOwnership = currentStats.nickOwnership * (1 - (amount / portfolioAtInvestment));
+          
+          nickValue = (portfolioAtInvestment * nickOwnership) / 100;
+          joeyValue = (portfolioAtInvestment * joeyOwnership) / 100;
         }
-        
-        // Recalculate ownership based on new values and new portfolio total
-        nickOwnership = (nickValue / newPortfolio) * 100;
-        joeyOwnership = (joeyValue / newPortfolio) * 100;
       }
 
       const entryData = {
