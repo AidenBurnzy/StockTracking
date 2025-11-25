@@ -1658,7 +1658,18 @@ function App() {
             </div>
             
             <div className="space-y-4">
-              {entries.map((entry) => (
+              {entries.map((entry, index) => {
+                // Calculate individual P/L for this entry compared to previous
+                const previousEntry = entries[index + 1];
+                let nickEntryPL = 0;
+                let joeyEntryPL = 0;
+                
+                if (entry.entry_type === 'trade' && previousEntry) {
+                  nickEntryPL = parseFloat(entry.nick_value) - parseFloat(previousEntry.nick_value);
+                  joeyEntryPL = parseFloat(entry.joey_value) - parseFloat(previousEntry.joey_value);
+                }
+                
+                return (
                 <div key={entry.id} className={`rounded-lg p-4 border ${
                   selectedEntries.has(entry.id)
                     ? 'bg-blue-900/30 border-blue-500'
@@ -1744,6 +1755,11 @@ function App() {
                       <div className="text-green-400 font-medium">
                         {formatPercent(entry.nick_ownership)}
                       </div>
+                      {entry.entry_type === 'trade' && previousEntry && (
+                        <div className={`text-xs font-medium mt-1 ${nickEntryPL >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                          {nickEntryPL >= 0 ? '+' : ''}{formatCurrency(nickEntryPL)}
+                        </div>
+                      )}
                     </div>
                     
                     <div>
@@ -1751,6 +1767,11 @@ function App() {
                       <div className="text-orange-400 font-medium">
                         {formatPercent(entry.joey_ownership)}
                       </div>
+                      {entry.entry_type === 'trade' && previousEntry && (
+                        <div className={`text-xs font-medium mt-1 ${joeyEntryPL >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                          {joeyEntryPL >= 0 ? '+' : ''}{formatCurrency(joeyEntryPL)}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1760,7 +1781,8 @@ function App() {
                     </div>
                   )}
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         )}
