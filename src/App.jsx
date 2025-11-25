@@ -885,44 +885,44 @@ function App() {
         {/* Live Position Stats */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* Nick's Box */}
-          <div className="bg-gradient-to-br from-green-900 to-green-800 rounded-2xl shadow-2xl p-6 border border-green-700">
+          <div className="bg-gradient-to-br from-red-900 to-red-800 rounded-2xl shadow-2xl p-6 border border-red-700">
             <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+              <div className="w-3 h-3 bg-red-400 rounded-full"></div>
               Nick's Position
             </h3>
             
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-green-200">Total Invested</span>
+                <span className="text-red-200">Total Invested</span>
                 <span className="text-xl font-bold text-white">
                   {formatCurrency(nickCapital)}
                 </span>
               </div>
               
               <div className="flex justify-between items-center">
-                <span className="text-green-200">Ownership</span>
+                <span className="text-red-200">Ownership</span>
                 <span className="text-2xl font-bold text-white flex items-center gap-1">
                   {formatPercent(currentStats.nickOwnership)}
                 </span>
               </div>
               
               <div className="flex justify-between items-center">
-                <span className="text-green-200">Current Value</span>
+                <span className="text-red-200">Current Value</span>
                 <span className="text-2xl font-bold text-white">
                   {formatCurrency(currentStats.nickValue)}
                 </span>
               </div>
               
-              <div className="flex justify-between items-center pt-3 border-t border-green-700">
-                <span className="text-green-200">Profit/Loss</span>
+              <div className="flex justify-between items-center pt-3 border-t border-red-700">
+                <span className="text-red-200">Profit/Loss</span>
                 <span className={`text-2xl font-bold flex items-center gap-1 ${currentStats.nickPL >= 0 ? 'text-green-300' : 'text-red-300'}`}>
                   {currentStats.nickPL >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
                   {formatCurrency(currentStats.nickPL)}
                 </span>
               </div>
               
-              <div className="bg-green-950 rounded-lg p-4 mt-4">
-                <div className="text-sm text-green-300 mb-1">Amount Owed to Nick</div>
+              <div className="bg-red-950 rounded-lg p-4 mt-4">
+                <div className="text-sm text-red-300 mb-1">Amount Owed to Nick</div>
                 <div className="text-3xl font-bold text-white">
                   {formatCurrency(currentStats.nickValue)}
                 </div>
@@ -930,7 +930,7 @@ function App() {
               
               <button
                 onClick={() => openDepositHistory('nick')}
-                className="w-full mt-4 bg-green-700 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="w-full mt-4 bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 <History className="w-4 h-4" />
                 View Deposit History
@@ -939,44 +939,44 @@ function App() {
           </div>
 
           {/* Joey's Box */}
-          <div className="bg-gradient-to-br from-orange-900 to-orange-800 rounded-2xl shadow-2xl p-6 border border-orange-700">
+          <div className="bg-gradient-to-br from-cyan-900 to-blue-800 rounded-2xl shadow-2xl p-6 border border-cyan-700">
             <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-3 h-3 bg-orange-400 rounded-full"></div>
+              <div className="w-3 h-3 bg-cyan-400 rounded-full"></div>
               Joey's Position
             </h3>
             
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-orange-200">Total Invested</span>
+                <span className="text-cyan-200">Total Invested</span>
                 <span className="text-xl font-bold text-white">
                   {formatCurrency(joeyCapital)}
                 </span>
               </div>
               
               <div className="flex justify-between items-center">
-                <span className="text-orange-200">Ownership</span>
+                <span className="text-cyan-200">Ownership</span>
                 <span className="text-2xl font-bold text-white flex items-center gap-1">
                   {formatPercent(currentStats.joeyOwnership)}
                 </span>
               </div>
               
               <div className="flex justify-between items-center">
-                <span className="text-orange-200">Current Value</span>
+                <span className="text-cyan-200">Current Value</span>
                 <span className="text-2xl font-bold text-white">
                   {formatCurrency(currentStats.joeyValue)}
                 </span>
               </div>
               
-              <div className="flex justify-between items-center pt-3 border-t border-orange-700">
-                <span className="text-orange-200">Profit/Loss</span>
+              <div className="flex justify-between items-center pt-3 border-t border-cyan-700">
+                <span className="text-cyan-200">Profit/Loss</span>
                 <span className={`text-2xl font-bold flex items-center gap-1 ${currentStats.joeyPL >= 0 ? 'text-green-300' : 'text-red-300'}`}>
                   {currentStats.joeyPL >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
                   {formatCurrency(currentStats.joeyPL)}
                 </span>
               </div>
               
-              <div className="bg-orange-950 rounded-lg p-4 mt-4">
-                <div className="text-sm text-orange-300 mb-1">Amount Owed to Joey</div>
+              <div className="bg-cyan-950 rounded-lg p-4 mt-4">
+                <div className="text-sm text-cyan-300 mb-1">Amount Owed to Joey</div>
                 <div className="text-3xl font-bold text-white">
                   {formatCurrency(currentStats.joeyValue)}
                 </div>
@@ -984,7 +984,7 @@ function App() {
               
               <button
                 onClick={() => openDepositHistory('joey')}
-                className="w-full mt-4 bg-orange-700 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="w-full mt-4 bg-cyan-700 hover:bg-cyan-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 <History className="w-4 h-4" />
                 View Deposit History
@@ -1029,7 +1029,7 @@ function App() {
                       onClick={() => setCapitalPerson('nick')}
                       className={`flex-1 py-3 rounded-lg font-medium transition-all ${
                         capitalPerson === 'nick'
-                          ? 'bg-green-600 text-white'
+                          ? 'bg-red-600 text-white'
                           : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                       }`}
                     >
@@ -1039,7 +1039,7 @@ function App() {
                       onClick={() => setCapitalPerson('joey')}
                       className={`flex-1 py-3 rounded-lg font-medium transition-all ${
                         capitalPerson === 'joey'
-                          ? 'bg-orange-600 text-white'
+                          ? 'bg-cyan-600 text-white'
                           : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                       }`}
                     >
@@ -1098,7 +1098,7 @@ function App() {
                       onClick={() => setCapitalPerson('nick')}
                       className={`flex-1 py-3 rounded-lg font-medium transition-all ${
                         capitalPerson === 'nick'
-                          ? 'bg-green-600 text-white'
+                          ? 'bg-red-600 text-white'
                           : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                       }`}
                     >
@@ -1108,7 +1108,7 @@ function App() {
                       onClick={() => setCapitalPerson('joey')}
                       className={`flex-1 py-3 rounded-lg font-medium transition-all ${
                         capitalPerson === 'joey'
-                          ? 'bg-orange-600 text-white'
+                          ? 'bg-cyan-600 text-white'
                           : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                       }`}
                     >
@@ -1398,13 +1398,13 @@ function App() {
                       step="0.01"
                       value={editNickValue}
                       onChange={(e) => setEditNickValue(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-700 border border-green-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="w-full px-4 py-3 bg-slate-700 border border-red-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                       placeholder="0.00"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-orange-300 mb-2">
+                    <label className="block text-sm font-medium text-cyan-300 mb-2">
                       Joey's Value *
                     </label>
                     <input
@@ -1412,7 +1412,7 @@ function App() {
                       step="0.01"
                       value={editJoeyValue}
                       onChange={(e) => setEditJoeyValue(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-700 border border-orange-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full px-4 py-3 bg-slate-700 border border-cyan-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                       placeholder="0.00"
                     />
                   </div>
@@ -1460,7 +1460,7 @@ function App() {
         {showDepositHistory && depositHistoryPerson && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
             <div className="bg-slate-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-auto border border-slate-700">
-              <div className={`sticky top-0 ${depositHistoryPerson === 'nick' ? 'bg-gradient-to-r from-green-900 to-green-800' : 'bg-gradient-to-r from-orange-900 to-orange-800'} px-6 py-4 border-b ${depositHistoryPerson === 'nick' ? 'border-green-700' : 'border-orange-700'}`}>
+              <div className={`sticky top-0 ${depositHistoryPerson === 'nick' ? 'bg-gradient-to-r from-red-900 to-red-800' : 'bg-gradient-to-r from-cyan-900 to-blue-800'} px-6 py-4 border-b ${depositHistoryPerson === 'nick' ? 'border-red-700' : 'border-cyan-700'}`}>
                 <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                   <History className="w-6 h-6" />
                   {depositHistoryPerson === 'nick' ? "Nick's" : "Joey's"} Deposit History
@@ -1475,7 +1475,7 @@ function App() {
                 ) : (
                   <div className="space-y-4">
                     {getDepositHistory(depositHistoryPerson).map((deposit, index) => (
-                      <div key={deposit.id} className={`rounded-lg p-5 border ${depositHistoryPerson === 'nick' ? 'bg-green-900/20 border-green-700' : 'bg-orange-900/20 border-orange-700'}`}>
+                      <div key={deposit.id} className={`rounded-lg p-5 border ${depositHistoryPerson === 'nick' ? 'bg-red-900/20 border-red-700' : 'bg-cyan-900/20 border-cyan-700'}`}>
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <div className="text-slate-400 text-sm mb-1">
@@ -1510,10 +1510,10 @@ function App() {
                       </div>
                     ))}
                     
-                    <div className={`rounded-lg p-5 border ${depositHistoryPerson === 'nick' ? 'bg-green-900/30 border-green-600' : 'bg-orange-900/30 border-orange-600'}`}>
+                    <div className={`rounded-lg p-5 border ${depositHistoryPerson === 'nick' ? 'bg-red-900/30 border-red-600' : 'bg-cyan-900/30 border-cyan-600'}`}>
                       <div className="text-center">
                         <div className="text-slate-300 text-sm mb-2">Total Deposited</div>
-                        <div className={`text-3xl font-bold ${depositHistoryPerson === 'nick' ? 'text-green-400' : 'text-orange-400'}`}>
+                        <div className={`text-3xl font-bold ${depositHistoryPerson === 'nick' ? 'text-red-400' : 'text-cyan-400'}`}>
                           {formatCurrency(
                             getDepositHistory(depositHistoryPerson).reduce((sum, d) => sum + d.amount, 0)
                           )}
@@ -1754,7 +1754,7 @@ function App() {
                     
                     <div>
                       <div className="text-slate-400 text-xs mb-1">Nick</div>
-                      <div className="text-green-400 font-medium">
+                      <div className="text-red-400 font-medium">
                         {formatPercent(entry.nick_ownership)}
                       </div>
                       {entry.entry_type === 'trade' && previousEntry && (
@@ -1766,7 +1766,7 @@ function App() {
                     
                     <div>
                       <div className="text-slate-400 text-xs mb-1">Joey</div>
-                      <div className="text-orange-400 font-medium">
+                      <div className="text-cyan-400 font-medium">
                         {formatPercent(entry.joey_ownership)}
                       </div>
                       {entry.entry_type === 'trade' && previousEntry && (
