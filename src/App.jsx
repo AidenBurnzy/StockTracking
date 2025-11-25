@@ -214,8 +214,11 @@ function App() {
       const newNickCapital = capitalPerson === 'nick' ? nickCapital + amount : nickCapital;
       const newJoeyCapital = capitalPerson === 'joey' ? joeyCapital + amount : joeyCapital;
       
-      // Portfolio increases by the new capital investment
-      const newPortfolio = portfolioAtInvestment + amount;
+      // Portfolio increases by the new capital investment - use integer arithmetic
+      const portfolioAtInvestmentCents = Math.round(portfolioAtInvestment * 100);
+      const amountCents = Math.round(amount * 100);
+      const newPortfolioCents = portfolioAtInvestmentCents + amountCents;
+      const newPortfolio = newPortfolioCents / 100;
       
       // Calculate ownership and values
       let nickOwnership, joeyOwnership, nickValue, joeyValue;
@@ -227,9 +230,7 @@ function App() {
         nickValue = capitalPerson === 'nick' ? amount : 0;
         joeyValue = capitalPerson === 'joey' ? amount : 0;
       } else {
-        // Convert amount to cents and do integer arithmetic
-        const amountCents = Math.round(amount * 100);
-        
+        // Do all arithmetic with integers (cents)
         if (capitalPerson === 'nick') {
           // Nick adds capital - his value increases by the amount invested
           const nickValueCents = nickCurrentValue + amountCents;
