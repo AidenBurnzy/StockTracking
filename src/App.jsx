@@ -1195,7 +1195,7 @@ function App() {
                     : 'bg-slate-700/50 border-slate-600'
                 }`}>
                   <div className="flex justify-between items-start mb-3">
-                    <div>
+                    <div className="flex-1">
                       <div className="text-white font-medium text-lg">
                         {formatDate(entry.entry_date)}
                       </div>
@@ -1215,24 +1215,24 @@ function App() {
                         </div>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 ml-4">
                       {entry.entry_type === 'trade' && (
                         <button
                           onClick={() => openEditEntry(entry)}
                           disabled={loading}
-                          className="text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
+                          className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 p-2 rounded-lg transition-all disabled:opacity-50"
                           title="Edit entry"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <Edit2 className="w-5 h-5" />
                         </button>
                       )}
                       <button
                         onClick={() => deleteEntry(entry.id)}
                         disabled={loading}
-                        className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                        className="text-red-400 hover:text-red-300 hover:bg-red-900/30 p-2 rounded-lg transition-all disabled:opacity-50"
                         title="Delete entry"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
