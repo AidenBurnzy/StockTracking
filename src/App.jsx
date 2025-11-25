@@ -174,41 +174,42 @@ function App() {
 
       if (!response.ok) throw new Error('Failed to update capital');
 
-      // Get current portfolio value BEFORE adding new capital
-      const currentPortfolio = getLatestPortfolio();
-      const newPortfolio = currentPortfolio + amount;
+      // Get current portfolio value at the time of investment
+      const portfolioAtInvestment = getLatestPortfolio();
       
       const newNickCapital = capitalPerson === 'nick' ? nickCapital + amount : nickCapital;
       const newJoeyCapital = capitalPerson === 'joey' ? joeyCapital + amount : joeyCapital;
       
+      // The new portfolio value is: existing portfolio + new capital
+      const newPortfolio = portfolioAtInvestment + amount;
+      
       // Calculate ownership and values
       let nickOwnership, joeyOwnership, nickValue, joeyValue;
       
-      if (currentPortfolio === 0) {
+      if (portfolioAtInvestment === 0) {
         // First investment - whoever invests gets 100%
         nickOwnership = capitalPerson === 'nick' ? 100 : 0;
         joeyOwnership = capitalPerson === 'joey' ? 100 : 0;
         nickValue = capitalPerson === 'nick' ? amount : 0;
         joeyValue = capitalPerson === 'joey' ? amount : 0;
       } else {
-        // Get current values BEFORE the new investment
-        const currentStats = calculateStats(currentPortfolio);
+        // Someone is adding capital to an existing portfolio
+        // The person adding capital gets their money added as their value
+        // The existing person's value stays the same
+        
+        const currentStats = calculateStats(portfolioAtInvestment);
         
         if (capitalPerson === 'nick') {
-          // Nick is adding more capital
-          // Nick's new value = his current value + new investment
+          // Nick adds capital
           nickValue = currentStats.nickValue + amount;
-          // Joey's value stays exactly the same
-          joeyValue = currentStats.joeyValue;
+          joeyValue = currentStats.joeyValue; // Joey's value unchanged
         } else {
-          // Joey is adding capital
-          // Joey's new value = his current value + new investment
+          // Joey adds capital
+          nickValue = currentStats.nickValue; // Nick's value unchanged  
           joeyValue = currentStats.joeyValue + amount;
-          // Nick's value stays exactly the same
-          nickValue = currentStats.nickValue;
         }
         
-        // Calculate ownership percentages based on values
+        // Recalculate ownership based on new values and new portfolio total
         nickOwnership = (nickValue / newPortfolio) * 100;
         joeyOwnership = (joeyValue / newPortfolio) * 100;
       }
@@ -225,7 +226,8 @@ function App() {
         nick_value: nickValue,
         joey_value: joeyValue,
         nick_pl: nickValue - newNickCapital,
-        joey_pl: joeyValue - newJoeyCapital
+        joey_pl: joeyValue - newJoeyCapital,
+        notes: `${capitalPerson === 'nick' ? 'Nick' : 'Joey'} added ${formatCurrency(amount)} at portfolio value ${formatCurrency(portfolioAtInvestment)}`
       };
 
       await fetch(`${API_URL}/add-entry`, {
