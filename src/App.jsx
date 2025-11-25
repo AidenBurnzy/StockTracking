@@ -217,11 +217,13 @@ function App() {
         if (capitalPerson === 'nick') {
           // Nick adds capital - his value increases by the amount invested
           nickValue = nickCurrentValue + amount;
+          // Joey's value stays the same
           joeyValue = joeyCurrentValue;
         } else {
-          // Joey adds capital - his value increases by the amount invested
+          // Joey adds capital - his value is exactly the amount invested
           joeyValue = joeyCurrentValue + amount;
-          nickValue = nickCurrentValue;
+          // Nick's value stays the same - calculate precisely to avoid rounding errors
+          nickValue = newPortfolio - joeyValue;
         }
         
         // Recalculate ownership percentages based on new portfolio total
