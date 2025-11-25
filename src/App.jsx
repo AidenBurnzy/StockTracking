@@ -233,8 +233,8 @@ function App() {
         } else {
           // Joey adds capital - his value increases by the amount invested
           joeyValue = joeyCurrentValue + amount;
-          // Nick's value stays the same - calculate precisely to avoid rounding errors
-          nickValue = newPortfolio - joeyValue;
+          // Nick's value stays the same
+          nickValue = nickCurrentValue;
         }
         
         // Recalculate ownership percentages based on new portfolio total
