@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, TrendingUp, TrendingDown, DollarSign, PiggyBank, RefreshCw, Edit2, MinusCircle, CheckSquare, Square } from 'lucide-react';
+import { Trash2, TrendingUp, TrendingDown, DollarSign, PiggyBank, RefreshCw, Edit2, MinusCircle, CheckSquare, Square, History } from 'lucide-react';
 
 function App() {
   // Capital tracking
@@ -30,6 +30,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedEntries, setSelectedEntries] = useState(new Set());
+  const [showDepositHistory, setShowDepositHistory] = useState(false);
+  const [depositHistoryPerson, setDepositHistoryPerson] = useState(null);
 
   // API base URL - works for both Netlify and Vercel
   const API_URL = typeof window !== 'undefined' && window.location.hostname.includes('vercel')
@@ -754,6 +756,26 @@ function App() {
     }
   };
 
+  const getDepositHistory = (person) => {
+    return entries
+      .filter(e => e.entry_type === 'capital' && e.capital_person === person)
+      .map(e => ({
+        id: e.id,
+        date: e.entry_date,
+        amount: parseFloat(e.capital_amount),
+        portfolioBefore: entries.length > 0 ? (
+          entries.find(prev => new Date(prev.entry_date) < new Date(e.entry_date) && prev.entry_type !== 'capital')?.portfolio_value || 0
+        ) : 0,
+        portfolioAfter: parseFloat(e.portfolio_value),
+        ownershipAfter: person === 'nick' ? parseFloat(e.nick_ownership) : parseFloat(e.joey_ownership)
+      }));
+  };
+
+  const openDepositHistory = (person) => {
+    setDepositHistoryPerson(person);
+    setShowDepositHistory(true);
+  };
+
   const formatCurrency = (num) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -904,6 +926,14 @@ function App() {
                   {formatCurrency(currentStats.nickValue)}
                 </div>
               </div>
+              
+              <button
+                onClick={() => openDepositHistory('nick')}
+                className="w-full mt-4 bg-green-700 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <History className="w-4 h-4" />
+                View Deposit History
+              </button>
             </div>
           </div>
 
@@ -950,6 +980,14 @@ function App() {
                   {formatCurrency(currentStats.joeyValue)}
                 </div>
               </div>
+              
+              <button
+                onClick={() => openDepositHistory('joey')}
+                className="w-full mt-4 bg-orange-700 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <History className="w-4 h-4" />
+                View Deposit History
+              </button>
             </div>
           </div>
         </div>
@@ -1410,6 +1448,89 @@ function App() {
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all disabled:opacity-50"
                   >
                     Update All
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Deposit History Modal */}
+        {showDepositHistory && depositHistoryPerson && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-slate-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-auto border border-slate-700">
+              <div className={`sticky top-0 ${depositHistoryPerson === 'nick' ? 'bg-gradient-to-r from-green-900 to-green-800' : 'bg-gradient-to-r from-orange-900 to-orange-800'} px-6 py-4 border-b ${depositHistoryPerson === 'nick' ? 'border-green-700' : 'border-orange-700'}`}>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <History className="w-6 h-6" />
+                  {depositHistoryPerson === 'nick' ? "Nick's" : "Joey's"} Deposit History
+                </h2>
+              </div>
+
+              <div className="p-6">
+                {getDepositHistory(depositHistoryPerson).length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-slate-400 text-lg">No deposits yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {getDepositHistory(depositHistoryPerson).map((deposit, index) => (
+                      <div key={deposit.id} className={`rounded-lg p-5 border ${depositHistoryPerson === 'nick' ? 'bg-green-900/20 border-green-700' : 'bg-orange-900/20 border-orange-700'}`}>
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <div className="text-slate-400 text-sm mb-1">
+                              Deposit #{getDepositHistory(depositHistoryPerson).length - index}
+                            </div>
+                            <div className="text-white text-lg font-medium">
+                              {formatDate(deposit.date)}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-slate-400 text-sm mb-1">Amount</div>
+                            <div className={`text-2xl font-bold ${depositHistoryPerson === 'nick' ? 'text-green-400' : 'text-orange-400'}`}>
+                              {formatCurrency(deposit.amount)}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-600">
+                          <div>
+                            <div className="text-slate-400 text-xs mb-1">Portfolio After</div>
+                            <div className="text-white font-medium">
+                              {formatCurrency(deposit.portfolioAfter)}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-slate-400 text-xs mb-1">Ownership After</div>
+                            <div className="text-white font-medium">
+                              {formatPercent(deposit.ownershipAfter)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <div className={`rounded-lg p-5 border ${depositHistoryPerson === 'nick' ? 'bg-green-900/30 border-green-600' : 'bg-orange-900/30 border-orange-600'}`}>
+                      <div className="text-center">
+                        <div className="text-slate-300 text-sm mb-2">Total Deposited</div>
+                        <div className={`text-3xl font-bold ${depositHistoryPerson === 'nick' ? 'text-green-400' : 'text-orange-400'}`}>
+                          {formatCurrency(
+                            getDepositHistory(depositHistoryPerson).reduce((sum, d) => sum + d.amount, 0)
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6">
+                  <button
+                    onClick={() => {
+                      setShowDepositHistory(false);
+                      setDepositHistoryPerson(null);
+                    }}
+                    className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-lg transition-all"
+                  >
+                    Close
                   </button>
                 </div>
               </div>
