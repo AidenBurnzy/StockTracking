@@ -172,7 +172,7 @@ function App() {
   };
 
   const addCapital = async () => {
-    const amount = parseFloat(capitalAmount);
+    const amount = Math.round(parseFloat(capitalAmount) * 100) / 100;
     if (!amount || amount <= 0) {
       alert('Please enter a valid amount');
       return;
@@ -198,9 +198,9 @@ function App() {
       if (entries.length > 0) {
         oldNickOwnership = parseFloat(entries[0].nick_ownership);
         oldJoeyOwnership = parseFloat(entries[0].joey_ownership);
-        // Use exact stored values to avoid rounding errors
-        nickCurrentValue = parseFloat(entries[0].nick_value);
-        joeyCurrentValue = parseFloat(entries[0].joey_value);
+        // Use exact stored values and round to avoid any precision issues
+        nickCurrentValue = Math.round(parseFloat(entries[0].nick_value) * 100) / 100;
+        joeyCurrentValue = Math.round(parseFloat(entries[0].joey_value) * 100) / 100;
       } else {
         // No entries yet, calculate from capital
         const totalCapital = nickCapital + joeyCapital;
@@ -229,15 +229,19 @@ function App() {
         // Use stored values from previous entry to avoid rounding errors
         if (capitalPerson === 'nick') {
           // Nick adds capital - his value increases by the amount invested
-          nickValue = Math.round((nickCurrentValue + amount) * 100) / 100;
+          nickValue = nickCurrentValue + amount;
           // Joey's value stays exactly the same
-          joeyValue = Math.round(joeyCurrentValue * 100) / 100;
+          joeyValue = joeyCurrentValue;
         } else {
           // Joey adds capital - his value increases by the amount invested
-          joeyValue = Math.round((joeyCurrentValue + amount) * 100) / 100;
+          joeyValue = joeyCurrentValue + amount;
           // Nick's value stays exactly the same
-          nickValue = Math.round(nickCurrentValue * 100) / 100;
+          nickValue = nickCurrentValue;
         }
+        
+        // Round final values to 2 decimal places
+        nickValue = Math.round(nickValue * 100) / 100;
+        joeyValue = Math.round(joeyValue * 100) / 100;
         
         // Recalculate ownership percentages based on new portfolio total
         nickOwnership = (nickValue / newPortfolio) * 100;
