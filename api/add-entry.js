@@ -19,8 +19,12 @@ export default async function handler(req, res) {
     const sql = neon(process.env.DATABASE_URL);
     const data = req.body;
 
+    // Use provided entry_date or default to CURRENT_TIMESTAMP
+    const entryDate = data.entry_date || null;
+
     const result = await sql`
       INSERT INTO entries (
+        entry_date,
         entry_type,
         portfolio_value,
         ticker,
@@ -39,6 +43,7 @@ export default async function handler(req, res) {
         nick_pl,
         joey_pl
       ) VALUES (
+        COALESCE(${entryDate}::timestamp, CURRENT_TIMESTAMP),
         ${data.entry_type},
         ${data.portfolio_value},
         ${data.ticker || null},

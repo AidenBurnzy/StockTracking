@@ -551,7 +551,8 @@ function App() {
         nick_value: stats.nickValue,
         joey_value: stats.joeyValue,
         nick_pl: stats.nickPL,
-        joey_pl: stats.joeyPL
+        joey_pl: stats.joeyPL,
+        entry_date: editingEntry.entry_date // Preserve original timestamp
       };
 
       await fetch(`${API_URL}/add-entry`, {
