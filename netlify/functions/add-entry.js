@@ -1,0 +1,71 @@
+import { neon } from '@neondatabase/serverless';
+
+export async function handler(event) {
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ error: 'Method not allowed' })
+    };
+  }
+
+  try {
+    const sql = neon(process.env.DATABASE_URL);
+    const data = JSON.parse(event.body);
+
+    const result = await sql`
+      INSERT INTO entries (
+        entry_type,
+        portfolio_value,
+        ticker,
+        trade_type,
+        contracts,
+        notes,
+        daily_pl,
+        capital_person,
+        capital_amount,
+        nick_capital,
+        joey_capital,
+        nick_ownership,
+        joey_ownership,
+        nick_value,
+        joey_value,
+        nick_pl,
+        joey_pl
+      ) VALUES (
+        ${data.entry_type},
+        ${data.portfolio_value},
+        ${data.ticker || null},
+        ${data.trade_type || null},
+        ${data.contracts || null},
+        ${data.notes || null},
+        ${data.daily_pl || 0},
+        ${data.capital_person || null},
+        ${data.capital_amount || null},
+        ${data.nick_capital},
+        ${data.joey_capital},
+        ${data.nick_ownership},
+        ${data.joey_ownership},
+        ${data.nick_value},
+        ${data.joey_value},
+        ${data.nick_pl},
+        ${data.joey_pl}
+      )
+      RETURNING *
+    `;
+
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: JSON.stringify(result[0])
+    };
+  } catch (error) {
+    console.error('Error adding entry:', error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Failed to add entry', details: error.message })
+    };
+  }
+}
