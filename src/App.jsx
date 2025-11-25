@@ -32,6 +32,7 @@ function App() {
   const [selectedEntries, setSelectedEntries] = useState(new Set());
   const [showDepositHistory, setShowDepositHistory] = useState(false);
   const [depositHistoryPerson, setDepositHistoryPerson] = useState(null);
+  const [deleteMode, setDeleteMode] = useState(false);
 
   // API base URL - works for both Netlify and Vercel
   const API_URL = typeof window !== 'undefined' && window.location.hostname.includes('vercel')
@@ -1637,29 +1638,52 @@ function App() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-white">History</h2>
               <div className="flex gap-3 items-center">
-                <button
-                  onClick={toggleSelectAll}
-                  disabled={loading}
-                  className="text-slate-300 hover:text-white flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-700 transition-all disabled:opacity-50"
-                >
-                  {selectedEntries.size === entries.length ? (
-                    <CheckSquare className="w-5 h-5" />
-                  ) : (
-                    <Square className="w-5 h-5" />
-                  )}
-                  <span className="text-sm">
-                    {selectedEntries.size === entries.length ? 'Deselect All' : 'Select All'}
-                  </span>
-                </button>
-                {selectedEntries.size > 0 && (
+                {!deleteMode ? (
                   <button
-                    onClick={deleteSelectedEntries}
+                    onClick={() => setDeleteMode(true)}
                     disabled={loading}
-                    className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2 px-4 py-2 rounded-lg transition-all disabled:opacity-50 font-medium"
+                    className="bg-slate-700 hover:bg-slate-600 text-white flex items-center gap-2 px-4 py-2 rounded-lg transition-all disabled:opacity-50 font-medium"
                   >
                     <Trash2 className="w-4 h-4" />
-                    Delete {selectedEntries.size} Selected
+                    Delete Mode
                   </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={toggleSelectAll}
+                      disabled={loading}
+                      className="text-slate-300 hover:text-white flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-700 transition-all disabled:opacity-50"
+                    >
+                      {selectedEntries.size === entries.length ? (
+                        <CheckSquare className="w-5 h-5" />
+                      ) : (
+                        <Square className="w-5 h-5" />
+                      )}
+                      <span className="text-sm">
+                        {selectedEntries.size === entries.length ? 'Deselect All' : 'Select All'}
+                      </span>
+                    </button>
+                    {selectedEntries.size > 0 && (
+                      <button
+                        onClick={deleteSelectedEntries}
+                        disabled={loading}
+                        className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2 px-4 py-2 rounded-lg transition-all disabled:opacity-50 font-medium"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete {selectedEntries.size} Selected
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setDeleteMode(false);
+                        setSelectedEntries(new Set());
+                      }}
+                      disabled={loading}
+                      className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-all disabled:opacity-50 font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -1686,17 +1710,19 @@ function App() {
                 }`}>
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-start gap-3 flex-1">
-                      <button
-                        onClick={() => toggleEntrySelection(entry.id)}
-                        disabled={loading}
-                        className="text-slate-400 hover:text-white transition-colors disabled:opacity-50 mt-1"
-                      >
-                        {selectedEntries.has(entry.id) ? (
-                          <CheckSquare className="w-5 h-5 text-blue-400" />
-                        ) : (
-                          <Square className="w-5 h-5" />
-                        )}
-                      </button>
+                      {deleteMode && (
+                        <button
+                          onClick={() => toggleEntrySelection(entry.id)}
+                          disabled={loading}
+                          className="text-slate-400 hover:text-white transition-colors disabled:opacity-50 mt-1"
+                        >
+                          {selectedEntries.has(entry.id) ? (
+                            <CheckSquare className="w-5 h-5 text-blue-400" />
+                          ) : (
+                            <Square className="w-5 h-5" />
+                          )}
+                        </button>
+                      )}
                       <div className="flex-1">
                         <div className="text-white font-medium text-lg">
                           {formatDate(entry.entry_date)}
@@ -1718,26 +1744,28 @@ function App() {
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-2 ml-4">
-                      {entry.entry_type === 'trade' && (
+                    {!deleteMode && (
+                      <div className="flex gap-2 ml-4">
+                        {entry.entry_type === 'trade' && (
+                          <button
+                            onClick={() => openEditEntry(entry)}
+                            disabled={loading}
+                            className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 p-2 rounded-lg transition-all disabled:opacity-50"
+                            title="Edit entry"
+                          >
+                            <Edit2 className="w-5 h-5" />
+                          </button>
+                        )}
                         <button
-                          onClick={() => openEditEntry(entry)}
+                          onClick={() => deleteEntry(entry.id)}
                           disabled={loading}
-                          className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 p-2 rounded-lg transition-all disabled:opacity-50"
-                          title="Edit entry"
+                          className="text-red-400 hover:text-red-300 hover:bg-red-900/30 p-2 rounded-lg transition-all disabled:opacity-50"
+                          title="Delete entry"
                         >
-                          <Edit2 className="w-5 h-5" />
+                          <Trash2 className="w-5 h-5" />
                         </button>
-                      )}
-                      <button
-                        onClick={() => deleteEntry(entry.id)}
-                        disabled={loading}
-                        className="text-red-400 hover:text-red-300 hover:bg-red-900/30 p-2 rounded-lg transition-all disabled:opacity-50"
-                        title="Delete entry"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
