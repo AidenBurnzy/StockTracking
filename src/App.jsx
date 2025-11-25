@@ -69,8 +69,16 @@ function App() {
     const portfolioNum = parseFloat(portfolio) || 0;
     const totalCapital = nickCapital + joeyCapital;
 
-    const nickOwnership = totalCapital > 0 ? (nickCapital / totalCapital) * 100 : 100;
-    const joeyOwnership = totalCapital > 0 ? (joeyCapital / totalCapital) * 100 : 0;
+    // Get ownership from the latest entry if it exists
+    let nickOwnership, joeyOwnership;
+    if (entries.length > 0) {
+      nickOwnership = parseFloat(entries[0].nick_ownership);
+      joeyOwnership = parseFloat(entries[0].joey_ownership);
+    } else {
+      // No entries yet, calculate from capital
+      nickOwnership = totalCapital > 0 ? (nickCapital / totalCapital) * 100 : 100;
+      joeyOwnership = totalCapital > 0 ? (joeyCapital / totalCapital) * 100 : 0;
+    }
 
     const nickValue = (portfolioNum * nickOwnership) / 100;
     const joeyValue = (portfolioNum * joeyOwnership) / 100;
