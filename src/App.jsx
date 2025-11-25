@@ -199,9 +199,9 @@ function App() {
       if (entries.length > 0) {
         oldNickOwnership = parseFloat(entries[0].nick_ownership);
         oldJoeyOwnership = parseFloat(entries[0].joey_ownership);
-        // Use exact stored values and ensure exactly 2 decimal places
-        nickCurrentValue = parseFloat(parseFloat(entries[0].nick_value).toFixed(2));
-        joeyCurrentValue = parseFloat(parseFloat(entries[0].joey_value).toFixed(2));
+        // Convert to cents (integers) to avoid floating point errors
+        nickCurrentValue = Math.round(parseFloat(entries[0].nick_value) * 100);
+        joeyCurrentValue = Math.round(parseFloat(entries[0].joey_value) * 100);
       } else {
         // No entries yet, calculate from capital
         const totalCapital = nickCapital + joeyCapital;
@@ -227,17 +227,25 @@ function App() {
         nickValue = capitalPerson === 'nick' ? amount : 0;
         joeyValue = capitalPerson === 'joey' ? amount : 0;
       } else {
-        // Use stored values from previous entry to avoid rounding errors
+        // Convert amount to cents and do integer arithmetic
+        const amountCents = Math.round(amount * 100);
+        
         if (capitalPerson === 'nick') {
           // Nick adds capital - his value increases by the amount invested
-          nickValue = parseFloat((nickCurrentValue + amount).toFixed(2));
-          // Joey's value stays exactly the same
-          joeyValue = parseFloat(joeyCurrentValue.toFixed(2));
+          const nickValueCents = nickCurrentValue + amountCents;
+          const joeyValueCents = joeyCurrentValue;
+          
+          // Convert back to dollars
+          nickValue = nickValueCents / 100;
+          joeyValue = joeyValueCents / 100;
         } else {
           // Joey adds capital - his value increases by the amount invested
-          joeyValue = parseFloat((joeyCurrentValue + amount).toFixed(2));
-          // Nick's value stays exactly the same
-          nickValue = parseFloat(nickCurrentValue.toFixed(2));
+          const joeyValueCents = joeyCurrentValue + amountCents;
+          const nickValueCents = nickCurrentValue;
+          
+          // Convert back to dollars
+          nickValue = nickValueCents / 100;
+          joeyValue = joeyValueCents / 100;
         }
         
         // Recalculate ownership percentages based on new portfolio total
