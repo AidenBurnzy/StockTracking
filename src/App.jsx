@@ -281,6 +281,24 @@ function App() {
 
     try {
       setLoading(true);
+      
+      // Find the entry being deleted
+      const entryToDelete = entries.find(e => e.id === id);
+      
+      // If it's a capital entry, reverse the capital addition
+      if (entryToDelete && entryToDelete.entry_type === 'capital' && entryToDelete.capital_person && entryToDelete.capital_amount) {
+        const amount = parseFloat(entryToDelete.capital_amount);
+        const person = entryToDelete.capital_person;
+        
+        // Reverse the capital (negative amount)
+        await fetch(`${API_URL}/update-capital`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ person, amount: -amount })
+        });
+      }
+      
+      // Delete the entry
       const response = await fetch(`${API_URL}/delete-entry`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -327,6 +345,33 @@ function App() {
 
     try {
       setLoading(true);
+      
+      // First, reverse any capital entries
+      const entriesToDelete = entries.filter(e => selectedEntries.has(e.id));
+      const capitalReversals = entriesToDelete
+        .filter(e => e.entry_type === 'capital' && e.capital_person && e.capital_amount)
+        .map(e => ({
+          person: e.capital_person,
+          amount: -parseFloat(e.capital_amount)
+        }));
+      
+      // Group capital reversals by person and sum them
+      const capitalChanges = capitalReversals.reduce((acc, { person, amount }) => {
+        if (!acc[person]) acc[person] = 0;
+        acc[person] += amount;
+        return acc;
+      }, {});
+      
+      // Apply capital reversals
+      await Promise.all(
+        Object.entries(capitalChanges).map(([person, amount]) =>
+          fetch(`${API_URL}/update-capital`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ person, amount })
+          })
+        )
+      );
       
       // Delete all selected entries
       await Promise.all(
