@@ -26,8 +26,10 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // API base URL
-  const API_URL = '/.netlify/functions';
+  // API base URL - works for both Netlify and Vercel
+  const API_URL = typeof window !== 'undefined' && window.location.hostname.includes('vercel')
+    ? '/api'
+    : '/.netlify/functions';
 
   // Load data on mount
   useEffect(() => {
