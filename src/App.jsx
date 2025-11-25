@@ -173,7 +173,7 @@ function App() {
   };
 
   const addCapital = async () => {
-    const amount = Math.round(parseFloat(capitalAmount) * 100) / 100;
+    const amount = parseFloat(capitalAmount);
     if (!amount || amount <= 0) {
       alert('Please enter a valid amount');
       return;
@@ -199,9 +199,8 @@ function App() {
       if (entries.length > 0) {
         oldNickOwnership = parseFloat(entries[0].nick_ownership);
         oldJoeyOwnership = parseFloat(entries[0].joey_ownership);
-        // Convert to cents (integers) to avoid floating point errors
-        nickCurrentValue = Math.round(parseFloat(entries[0].nick_value) * 100);
-        joeyCurrentValue = Math.round(parseFloat(entries[0].joey_value) * 100);
+        nickCurrentValue = parseFloat(entries[0].nick_value);
+        joeyCurrentValue = parseFloat(entries[0].joey_value);
       } else {
         // No entries yet, calculate from capital
         const totalCapital = nickCapital + joeyCapital;
@@ -214,11 +213,8 @@ function App() {
       const newNickCapital = capitalPerson === 'nick' ? nickCapital + amount : nickCapital;
       const newJoeyCapital = capitalPerson === 'joey' ? joeyCapital + amount : joeyCapital;
       
-      // Portfolio increases by the new capital investment - use integer arithmetic
-      const portfolioAtInvestmentCents = Math.round(portfolioAtInvestment * 100);
-      const amountCents = Math.round(amount * 100);
-      const newPortfolioCents = portfolioAtInvestmentCents + amountCents;
-      const newPortfolio = newPortfolioCents / 100;
+      // Portfolio increases by the new capital investment
+      const newPortfolio = portfolioAtInvestment + amount;
       
       // Calculate ownership and values
       let nickOwnership, joeyOwnership, nickValue, joeyValue;
@@ -230,23 +226,16 @@ function App() {
         nickValue = capitalPerson === 'nick' ? amount : 0;
         joeyValue = capitalPerson === 'joey' ? amount : 0;
       } else {
-        // Do all arithmetic with integers (cents)
         if (capitalPerson === 'nick') {
           // Nick adds capital - his value increases by the amount invested
-          const nickValueCents = nickCurrentValue + amountCents;
-          const joeyValueCents = joeyCurrentValue;
-          
-          // Convert back to dollars
-          nickValue = nickValueCents / 100;
-          joeyValue = joeyValueCents / 100;
+          nickValue = nickCurrentValue + amount;
+          // Joey's value stays exactly the same
+          joeyValue = joeyCurrentValue;
         } else {
           // Joey adds capital - his value increases by the amount invested
-          const joeyValueCents = joeyCurrentValue + amountCents;
-          const nickValueCents = nickCurrentValue;
-          
-          // Convert back to dollars
-          nickValue = nickValueCents / 100;
-          joeyValue = joeyValueCents / 100;
+          joeyValue = joeyCurrentValue + amount;
+          // Nick's value stays exactly the same
+          nickValue = nickCurrentValue;
         }
         
         // Recalculate ownership percentages based on new portfolio total
