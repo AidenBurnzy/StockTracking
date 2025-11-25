@@ -229,14 +229,14 @@ function App() {
         // Use stored values from previous entry to avoid rounding errors
         if (capitalPerson === 'nick') {
           // Nick adds capital - his value increases by the amount invested
-          nickValue = nickCurrentValue + amount;
+          nickValue = Math.round((nickCurrentValue + amount) * 100) / 100;
           // Joey's value stays exactly the same
-          joeyValue = joeyCurrentValue;
+          joeyValue = Math.round(joeyCurrentValue * 100) / 100;
         } else {
           // Joey adds capital - his value increases by the amount invested
-          joeyValue = joeyCurrentValue + amount;
+          joeyValue = Math.round((joeyCurrentValue + amount) * 100) / 100;
           // Nick's value stays exactly the same
-          nickValue = nickCurrentValue;
+          nickValue = Math.round(nickCurrentValue * 100) / 100;
         }
         
         // Recalculate ownership percentages based on new portfolio total
