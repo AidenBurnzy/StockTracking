@@ -177,6 +177,11 @@ function App() {
       // Get current portfolio value at the time of investment
       const portfolioAtInvestment = getLatestPortfolio();
       
+      // Use CURRENT capital values (before update) for calculations
+      const oldNickCapital = nickCapital;
+      const oldJoeyCapital = joeyCapital;
+      const oldTotalCapital = oldNickCapital + oldJoeyCapital;
+      
       const newNickCapital = capitalPerson === 'nick' ? nickCapital + amount : nickCapital;
       const newJoeyCapital = capitalPerson === 'joey' ? joeyCapital + amount : joeyCapital;
       
@@ -193,12 +198,13 @@ function App() {
         nickValue = capitalPerson === 'nick' ? amount : 0;
         joeyValue = capitalPerson === 'joey' ? amount : 0;
       } else {
-        // Calculate new ownership based on new total portfolio value
-        const currentStats = calculateStats(portfolioAtInvestment);
+        // Calculate current ownership using OLD capital values
+        const oldNickOwnership = oldTotalCapital > 0 ? (oldNickCapital / oldTotalCapital) * 100 : 100;
+        const oldJoeyOwnership = oldTotalCapital > 0 ? (oldJoeyCapital / oldTotalCapital) * 100 : 0;
         
         // Current values stay the same (they're locked in at portfolioAtInvestment)
-        const nickCurrentValue = (portfolioAtInvestment * currentStats.nickOwnership) / 100;
-        const joeyCurrentValue = (portfolioAtInvestment * currentStats.joeyOwnership) / 100;
+        const nickCurrentValue = (portfolioAtInvestment * oldNickOwnership) / 100;
+        const joeyCurrentValue = (portfolioAtInvestment * oldJoeyOwnership) / 100;
         
         if (capitalPerson === 'nick') {
           // Nick adds capital - his value increases by the amount invested
