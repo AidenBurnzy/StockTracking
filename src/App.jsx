@@ -181,37 +181,37 @@ function App() {
       const newNickCapital = capitalPerson === 'nick' ? nickCapital + amount : nickCapital;
       const newJoeyCapital = capitalPerson === 'joey' ? joeyCapital + amount : joeyCapital;
       
-      // Calculate ownership based on current portfolio value
-      // The new investor gets: (their investment / new portfolio value) * 100
-      // The existing investors get: (current portfolio / new portfolio value) * 100 distributed by their current ownership
-      
+      // Calculate ownership and values
       let nickOwnership, joeyOwnership, nickValue, joeyValue;
       
       if (currentPortfolio === 0) {
-        // First investment
+        // First investment - whoever invests gets 100%
         nickOwnership = capitalPerson === 'nick' ? 100 : 0;
         joeyOwnership = capitalPerson === 'joey' ? 100 : 0;
+        nickValue = capitalPerson === 'nick' ? amount : 0;
+        joeyValue = capitalPerson === 'joey' ? amount : 0;
       } else {
-        // Calculate current ownership percentages
+        // Get current values BEFORE the new investment
         const currentStats = calculateStats(currentPortfolio);
         
-        // New investor gets ownership equal to their investment as % of new total
-        const newInvestorOwnership = (amount / newPortfolio) * 100;
-        
-        // Existing portfolio maintains its value, but as a smaller % of the new total
-        const existingPortfolioPercent = (currentPortfolio / newPortfolio) * 100;
-        
         if (capitalPerson === 'nick') {
-          nickOwnership = existingPortfolioPercent * (currentStats.nickOwnership / 100) + newInvestorOwnership;
-          joeyOwnership = existingPortfolioPercent * (currentStats.joeyOwnership / 100);
+          // Nick is adding more capital
+          // Nick's new value = his current value + new investment
+          nickValue = currentStats.nickValue + amount;
+          // Joey's value stays exactly the same
+          joeyValue = currentStats.joeyValue;
         } else {
-          nickOwnership = existingPortfolioPercent * (currentStats.nickOwnership / 100);
-          joeyOwnership = existingPortfolioPercent * (currentStats.joeyOwnership / 100) + newInvestorOwnership;
+          // Joey is adding capital
+          // Joey's new value = his current value + new investment
+          joeyValue = currentStats.joeyValue + amount;
+          // Nick's value stays exactly the same
+          nickValue = currentStats.nickValue;
         }
+        
+        // Calculate ownership percentages based on values
+        nickOwnership = (nickValue / newPortfolio) * 100;
+        joeyOwnership = (joeyValue / newPortfolio) * 100;
       }
-      
-      nickValue = (newPortfolio * nickOwnership) / 100;
-      joeyValue = (newPortfolio * joeyOwnership) / 100;
 
       const entryData = {
         entry_type: 'capital',
@@ -301,42 +301,36 @@ function App() {
       const newNickCapital = capitalPerson === 'nick' ? nickCapital - amount : nickCapital;
       const newJoeyCapital = capitalPerson === 'joey' ? joeyCapital - amount : joeyCapital;
       
-      // Calculate ownership similar to adding capital, but in reverse
+      // Calculate ownership and values
       let nickOwnership, joeyOwnership, nickValue, joeyValue;
       
       if (newPortfolio === 0) {
         nickOwnership = 0;
         joeyOwnership = 0;
+        nickValue = 0;
+        joeyValue = 0;
       } else {
-        // Get current stats
+        // Get current values BEFORE the withdrawal
         const currentStats = calculateStats(currentPortfolio);
         
-        // The person withdrawing reduces their ownership proportionally
-        const withdrawalPercent = (amount / currentPortfolio) * 100;
-        
-        // Remaining portfolio maintains existing ownership ratios
-        const remainingPortfolioPercent = (newPortfolio / currentPortfolio) * 100;
-        
         if (capitalPerson === 'nick') {
-          // Nick withdraws, reducing his ownership
-          nickOwnership = (currentStats.nickOwnership * remainingPortfolioPercent / 100) - (withdrawalPercent * (currentStats.nickOwnership / 100));
-          joeyOwnership = (currentStats.joeyOwnership * remainingPortfolioPercent / 100);
+          // Nick is withdrawing
+          // Nick's new value = his current value - withdrawal
+          nickValue = currentStats.nickValue - amount;
+          // Joey's value stays exactly the same
+          joeyValue = currentStats.joeyValue;
         } else {
-          // Joey withdraws, reducing his ownership
-          nickOwnership = (currentStats.nickOwnership * remainingPortfolioPercent / 100);
-          joeyOwnership = (currentStats.joeyOwnership * remainingPortfolioPercent / 100) - (withdrawalPercent * (currentStats.joeyOwnership / 100));
+          // Joey is withdrawing
+          // Joey's new value = his current value - withdrawal
+          joeyValue = currentStats.joeyValue - amount;
+          // Nick's value stays exactly the same
+          nickValue = currentStats.nickValue;
         }
         
-        // Normalize to ensure they add up to 100%
-        const total = nickOwnership + joeyOwnership;
-        if (total > 0) {
-          nickOwnership = (nickOwnership / total) * 100;
-          joeyOwnership = (joeyOwnership / total) * 100;
-        }
+        // Calculate ownership percentages based on values
+        nickOwnership = (nickValue / newPortfolio) * 100;
+        joeyOwnership = (joeyValue / newPortfolio) * 100;
       }
-      
-      nickValue = (newPortfolio * nickOwnership) / 100;
-      joeyValue = (newPortfolio * joeyOwnership) / 100;
 
       const entryData = {
         entry_type: 'withdrawal',
