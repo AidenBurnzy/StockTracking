@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, TrendingUp, TrendingDown, DollarSign, PiggyBank, RefreshCw, Edit2, MinusCircle } from 'lucide-react';
+import { Trash2, TrendingUp, TrendingDown, DollarSign, PiggyBank, RefreshCw, Edit2, MinusCircle, CheckSquare, Square } from 'lucide-react';
 
 function App() {
   // Capital tracking
@@ -25,6 +25,7 @@ function App() {
   const [newPortfolioValue, setNewPortfolioValue] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedEntries, setSelectedEntries] = useState(new Set());
 
   // API base URL - works for both Netlify and Vercel
   const API_URL = typeof window !== 'undefined' && window.location.hostname.includes('vercel')
@@ -282,9 +283,60 @@ function App() {
       if (!response.ok) throw new Error('Failed to delete entry');
       
       await loadData();
+      setSelectedEntries(new Set()); // Clear selection after delete
     } catch (err) {
       console.error('Error deleting entry:', err);
       alert('Failed to delete entry: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleEntrySelection = (id) => {
+    const newSelected = new Set(selectedEntries);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedEntries(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedEntries.size === entries.length) {
+      setSelectedEntries(new Set());
+    } else {
+      setSelectedEntries(new Set(entries.map(e => e.id)));
+    }
+  };
+
+  const deleteSelectedEntries = async () => {
+    if (selectedEntries.size === 0) {
+      alert('No entries selected');
+      return;
+    }
+
+    if (!confirm(`Delete ${selectedEntries.size} selected entries? This cannot be undone.`)) return;
+
+    try {
+      setLoading(true);
+      
+      // Delete all selected entries
+      await Promise.all(
+        Array.from(selectedEntries).map(id =>
+          fetch(`${API_URL}/delete-entry`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+          })
+        )
+      );
+      
+      await loadData();
+      setSelectedEntries(new Set());
+    } catch (err) {
+      console.error('Error deleting entries:', err);
+      alert('Failed to delete entries: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -1185,35 +1237,78 @@ function App() {
         {/* History */}
         {entries.length > 0 && (
           <div className="bg-slate-800 rounded-2xl shadow-2xl p-6 border border-slate-700">
-            <h2 className="text-2xl font-bold text-white mb-6">History</h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">History</h2>
+              <div className="flex gap-3 items-center">
+                <button
+                  onClick={toggleSelectAll}
+                  disabled={loading}
+                  className="text-slate-300 hover:text-white flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-700 transition-all disabled:opacity-50"
+                >
+                  {selectedEntries.size === entries.length ? (
+                    <CheckSquare className="w-5 h-5" />
+                  ) : (
+                    <Square className="w-5 h-5" />
+                  )}
+                  <span className="text-sm">
+                    {selectedEntries.size === entries.length ? 'Deselect All' : 'Select All'}
+                  </span>
+                </button>
+                {selectedEntries.size > 0 && (
+                  <button
+                    onClick={deleteSelectedEntries}
+                    disabled={loading}
+                    className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2 px-4 py-2 rounded-lg transition-all disabled:opacity-50 font-medium"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete {selectedEntries.size} Selected
+                  </button>
+                )}
+              </div>
+            </div>
             
             <div className="space-y-4">
               {entries.map((entry) => (
                 <div key={entry.id} className={`rounded-lg p-4 border ${
-                  entry.entry_type === 'capital' 
+                  selectedEntries.has(entry.id)
+                    ? 'bg-blue-900/30 border-blue-500'
+                    : entry.entry_type === 'capital' 
                     ? 'bg-purple-900/20 border-purple-700'
                     : 'bg-slate-700/50 border-slate-600'
                 }`}>
                   <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                      <div className="text-white font-medium text-lg">
-                        {formatDate(entry.entry_date)}
+                    <div className="flex items-start gap-3 flex-1">
+                      <button
+                        onClick={() => toggleEntrySelection(entry.id)}
+                        disabled={loading}
+                        className="text-slate-400 hover:text-white transition-colors disabled:opacity-50 mt-1"
+                      >
+                        {selectedEntries.has(entry.id) ? (
+                          <CheckSquare className="w-5 h-5 text-blue-400" />
+                        ) : (
+                          <Square className="w-5 h-5" />
+                        )}
+                      </button>
+                      <div className="flex-1">
+                        <div className="text-white font-medium text-lg">
+                          {formatDate(entry.entry_date)}
+                        </div>
+                        {entry.entry_type === 'capital' ? (
+                          <div className="text-purple-300 text-sm font-medium mt-1">
+                            💰 {entry.capital_person === 'nick' ? 'Nick' : 'Joey'} added {formatCurrency(entry.capital_amount)}
+                          </div>
+                        ) : entry.entry_type === 'withdrawal' ? (
+                          <div className="text-red-300 text-sm font-medium mt-1">
+                            💸 {entry.capital_person === 'nick' ? 'Nick' : 'Joey'} withdrew {formatCurrency(Math.abs(entry.capital_amount))}
+                          </div>
+                        ) : (
+                          <div className="text-slate-400 text-sm mt-1">
+                            {entry.ticker && entry.ticker !== 'N/A' ? `${entry.ticker} - ` : ''}
+                            {entry.trade_type && entry.trade_type !== 'N/A' ? `${entry.trade_type}` : ''}
+                            {entry.contracts && entry.contracts !== 'N/A' ? ` (${entry.contracts})` : ''}
+                          </div>
+                        )}
                       </div>
-                      {entry.entry_type === 'capital' ? (
-                        <div className="text-purple-300 text-sm font-medium mt-1">
-                          💰 {entry.capital_person === 'nick' ? 'Nick' : 'Joey'} added {formatCurrency(entry.capital_amount)}
-                        </div>
-                      ) : entry.entry_type === 'withdrawal' ? (
-                        <div className="text-red-300 text-sm font-medium mt-1">
-                          💸 {entry.capital_person === 'nick' ? 'Nick' : 'Joey'} withdrew {formatCurrency(Math.abs(entry.capital_amount))}
-                        </div>
-                      ) : (
-                        <div className="text-slate-400 text-sm mt-1">
-                          {entry.ticker && entry.ticker !== 'N/A' ? `${entry.ticker} - ` : ''}
-                          {entry.trade_type && entry.trade_type !== 'N/A' ? `${entry.trade_type}` : ''}
-                          {entry.contracts && entry.contracts !== 'N/A' ? ` (${entry.contracts})` : ''}
-                        </div>
-                      )}
                     </div>
                     <div className="flex gap-2 ml-4">
                       {entry.entry_type === 'trade' && (
