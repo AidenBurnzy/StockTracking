@@ -19,10 +19,14 @@ function App() {
   const [showWithdrawCapital, setShowWithdrawCapital] = useState(false);
   const [showEditEntry, setShowEditEntry] = useState(false);
   const [showEditPortfolio, setShowEditPortfolio] = useState(false);
+  const [showEditValues, setShowEditValues] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [capitalPerson, setCapitalPerson] = useState('nick');
   const [capitalAmount, setCapitalAmount] = useState('');
   const [newPortfolioValue, setNewPortfolioValue] = useState('');
+  const [editNickValue, setEditNickValue] = useState('');
+  const [editJoeyValue, setEditJoeyValue] = useState('');
+  const [editPortfolioTotal, setEditPortfolioTotal] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedEntries, setSelectedEntries] = useState(new Set());
@@ -590,6 +594,103 @@ function App() {
     }
   };
 
+  const openEditValues = () => {
+    const currentPortfolio = getLatestPortfolio();
+    setEditPortfolioTotal(currentPortfolio.toString());
+    setEditNickValue(currentStats.nickValue.toFixed(2));
+    setEditJoeyValue(currentStats.joeyValue.toFixed(2));
+    setShowEditValues(true);
+  };
+
+  const updateValues = async () => {
+    const newPortfolio = parseFloat(editPortfolioTotal);
+    const newNickValue = parseFloat(editNickValue);
+    const newJoeyValue = parseFloat(editJoeyValue);
+
+    if (isNaN(newPortfolio) || newPortfolio < 0) {
+      alert('Please enter a valid portfolio value');
+      return;
+    }
+
+    if (isNaN(newNickValue) || newNickValue < 0 || isNaN(newJoeyValue) || newJoeyValue < 0) {
+      alert('Please enter valid values for Nick and Joey');
+      return;
+    }
+
+    // Check if values add up to portfolio total (with small tolerance for rounding)
+    const totalValues = newNickValue + newJoeyValue;
+    if (Math.abs(totalValues - newPortfolio) > 0.02) {
+      alert(`Nick's value (${formatCurrency(newNickValue)}) + Joey's value (${formatCurrency(newJoeyValue)}) must equal Portfolio Total (${formatCurrency(newPortfolio)})`);
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const latestEntry = entries[0];
+      if (!latestEntry) {
+        alert('No entries to update. Please create an entry first.');
+        return;
+      }
+
+      // Delete the latest entry
+      await fetch(`${API_URL}/delete-entry`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: latestEntry.id })
+      });
+
+      // Calculate new ownership percentages
+      const nickOwnership = (newNickValue / newPortfolio) * 100;
+      const joeyOwnership = (newJoeyValue / newPortfolio) * 100;
+
+      // Find the entry before the latest for daily P/L
+      const previousValue = entries.length > 1 
+        ? parseFloat(entries[1].portfolio_value)
+        : 0;
+      const dailyPL = newPortfolio - previousValue;
+
+      // Create new entry with updated values
+      const entryData = {
+        entry_type: latestEntry.entry_type,
+        portfolio_value: newPortfolio,
+        ticker: latestEntry.ticker,
+        trade_type: latestEntry.trade_type,
+        contracts: latestEntry.contracts,
+        notes: latestEntry.notes,
+        daily_pl: previousValue > 0 ? dailyPL : 0,
+        capital_person: latestEntry.capital_person,
+        capital_amount: latestEntry.capital_amount,
+        nick_capital: nickCapital,
+        joey_capital: joeyCapital,
+        nick_ownership: nickOwnership,
+        joey_ownership: joeyOwnership,
+        nick_value: newNickValue,
+        joey_value: newJoeyValue,
+        nick_pl: newNickValue - nickCapital,
+        joey_pl: newJoeyValue - joeyCapital
+      };
+
+      await fetch(`${API_URL}/add-entry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entryData)
+      });
+
+      await loadData();
+      
+      setShowEditValues(false);
+      setEditPortfolioTotal('');
+      setEditNickValue('');
+      setEditJoeyValue('');
+    } catch (err) {
+      console.error('Error updating values:', err);
+      alert('Failed to update values: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatCurrency = (num) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -660,24 +761,23 @@ function App() {
 
         {/* Current Stats Summary */}
         <div className="bg-slate-800 rounded-2xl shadow-2xl p-6 mb-8 border border-slate-700">
+          <div className="flex justify-between items-start mb-4">
+            <h2 className="text-xl font-bold text-white">Current Stats</h2>
+            <button
+              onClick={openEditValues}
+              disabled={loading || entries.length === 0}
+              className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Edit all values"
+            >
+              <Edit2 className="w-4 h-4" />
+              <span className="text-sm font-medium">Edit Values</span>
+            </button>
+          </div>
           <div className="grid md:grid-cols-3 gap-6">
             <div className="text-center">
               <div className="text-slate-400 text-sm mb-2">Portfolio Value</div>
-              <div className="flex items-center justify-center gap-2">
-                <div className="text-3xl font-bold text-blue-400">
-                  {formatCurrency(getLatestPortfolio())}
-                </div>
-                <button
-                  onClick={() => {
-                    setNewPortfolioValue(getLatestPortfolio().toString());
-                    setShowEditPortfolio(true);
-                  }}
-                  disabled={loading || entries.length === 0}
-                  className="text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Edit portfolio value"
-                >
-                  <Edit2 className="w-5 h-5" />
-                </button>
+              <div className="text-3xl font-bold text-blue-400">
+                {formatCurrency(getLatestPortfolio())}
               </div>
             </div>
             <div className="text-center">
@@ -1140,6 +1240,101 @@ function App() {
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all disabled:opacity-50"
                   >
                     Update Value
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Values Modal */}
+        {showEditValues && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-800 rounded-2xl p-8 max-w-lg w-full border border-slate-700">
+              <h3 className="text-2xl font-bold text-white mb-6">Edit All Values</h3>
+              
+              <div className="space-y-4">
+                <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-4 mb-4">
+                  <p className="text-blue-300 text-sm">
+                    💡 Manually adjust the portfolio total and individual values. Nick's value + Joey's value must equal the portfolio total.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Portfolio Total *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editPortfolioTotal}
+                    onChange={(e) => setEditPortfolioTotal(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-green-300 mb-2">
+                      Nick's Value *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editNickValue}
+                      onChange={(e) => setEditNickValue(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-700 border border-green-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-orange-300 mb-2">
+                      Joey's Value *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editJoeyValue}
+                      onChange={(e) => setEditJoeyValue(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-700 border border-orange-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-slate-700 rounded-lg p-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Sum of values:</span>
+                    <span className={`font-medium ${
+                      Math.abs((parseFloat(editNickValue) || 0) + (parseFloat(editJoeyValue) || 0) - (parseFloat(editPortfolioTotal) || 0)) < 0.02
+                        ? 'text-green-400'
+                        : 'text-red-400'
+                    }`}>
+                      {formatCurrency((parseFloat(editNickValue) || 0) + (parseFloat(editJoeyValue) || 0))}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowEditValues(false);
+                      setEditPortfolioTotal('');
+                      setEditNickValue('');
+                      setEditJoeyValue('');
+                    }}
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-lg transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={updateValues}
+                    disabled={loading}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all disabled:opacity-50"
+                  >
+                    Update All
                   </button>
                 </div>
               </div>
