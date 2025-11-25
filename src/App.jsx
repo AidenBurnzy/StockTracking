@@ -199,9 +199,9 @@ function App() {
       if (entries.length > 0) {
         oldNickOwnership = parseFloat(entries[0].nick_ownership);
         oldJoeyOwnership = parseFloat(entries[0].joey_ownership);
-        // Use exact stored values and round to avoid any precision issues
-        nickCurrentValue = Math.round(parseFloat(entries[0].nick_value) * 100) / 100;
-        joeyCurrentValue = Math.round(parseFloat(entries[0].joey_value) * 100) / 100;
+        // Use exact stored values and ensure exactly 2 decimal places
+        nickCurrentValue = parseFloat(parseFloat(entries[0].nick_value).toFixed(2));
+        joeyCurrentValue = parseFloat(parseFloat(entries[0].joey_value).toFixed(2));
       } else {
         // No entries yet, calculate from capital
         const totalCapital = nickCapital + joeyCapital;
@@ -230,19 +230,15 @@ function App() {
         // Use stored values from previous entry to avoid rounding errors
         if (capitalPerson === 'nick') {
           // Nick adds capital - his value increases by the amount invested
-          nickValue = nickCurrentValue + amount;
+          nickValue = parseFloat((nickCurrentValue + amount).toFixed(2));
           // Joey's value stays exactly the same
-          joeyValue = joeyCurrentValue;
+          joeyValue = parseFloat(joeyCurrentValue.toFixed(2));
         } else {
           // Joey adds capital - his value increases by the amount invested
-          joeyValue = joeyCurrentValue + amount;
+          joeyValue = parseFloat((joeyCurrentValue + amount).toFixed(2));
           // Nick's value stays exactly the same
-          nickValue = nickCurrentValue;
+          nickValue = parseFloat(nickCurrentValue.toFixed(2));
         }
-        
-        // Round final values to 2 decimal places
-        nickValue = Math.round(nickValue * 100) / 100;
-        joeyValue = Math.round(joeyValue * 100) / 100;
         
         // Recalculate ownership percentages based on new portfolio total
         nickOwnership = (nickValue / newPortfolio) * 100;
@@ -409,9 +405,18 @@ function App() {
       return;
     }
 
-    const currentCapital = capitalPerson === 'nick' ? nickCapital : joeyCapital;
-    if (amount > currentCapital) {
-      alert(`Cannot withdraw more than current capital (${formatCurrency(currentCapital)})`);
+    // Get current portfolio and calculate current values
+    const currentPortfolio = getLatestPortfolio();
+    if (currentPortfolio === 0) {
+      alert('No funds available to withdraw');
+      return;
+    }
+
+    const currentStats = calculateStats(currentPortfolio);
+    const currentValue = capitalPerson === 'nick' ? currentStats.nickValue : currentStats.joeyValue;
+    
+    if (amount > currentValue) {
+      alert(`Cannot withdraw more than current value owed (${formatCurrency(currentValue)})`);
       return;
     }
 
@@ -427,8 +432,7 @@ function App() {
 
       if (!response.ok) throw new Error('Failed to update capital');
 
-      // Get current portfolio value BEFORE withdrawal
-      const currentPortfolio = getLatestPortfolio();
+      // Calculate new portfolio after withdrawal
       const newPortfolio = currentPortfolio - amount;
       
       const newNickCapital = capitalPerson === 'nick' ? nickCapital - amount : nickCapital;
@@ -1108,7 +1112,7 @@ function App() {
                           : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                       }`}
                     >
-                      Nick ({formatCurrency(nickCapital)})
+                      Nick ({formatCurrency(calculateStats(getLatestPortfolio()).nickValue)})
                     </button>
                     <button
                       onClick={() => setCapitalPerson('joey')}
@@ -1118,7 +1122,7 @@ function App() {
                           : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                       }`}
                     >
-                      Joey ({formatCurrency(joeyCapital)})
+                      Joey ({formatCurrency(calculateStats(getLatestPortfolio()).joeyValue)})
                     </button>
                   </div>
                 </div>
@@ -1136,13 +1140,17 @@ function App() {
                     placeholder="0.00"
                   />
                   <div className="text-xs text-slate-400 mt-2">
-                    Maximum: {formatCurrency(capitalPerson === 'nick' ? nickCapital : joeyCapital)}
+                    Maximum: {formatCurrency(
+                      capitalPerson === 'nick' 
+                        ? calculateStats(getLatestPortfolio()).nickValue 
+                        : calculateStats(getLatestPortfolio()).joeyValue
+                    )}
                   </div>
                 </div>
 
                 <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3">
                   <p className="text-yellow-300 text-sm">
-                    ⚠️ Withdrawing capital will reduce both the portfolio value and ownership percentage.
+                    ⚠️ Withdrawing will reduce your current value owed and the portfolio total.
                   </p>
                 </div>
 
