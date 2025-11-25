@@ -620,7 +620,7 @@ function App() {
     // Check if values add up to portfolio total (with small tolerance for rounding)
     const totalValues = newNickValue + newJoeyValue;
     if (Math.abs(totalValues - newPortfolio) > 0.02) {
-      alert(`Nick's value (${formatCurrency(newNickValue)}) + Joey's value (${formatCurrency(newJoeyValue)}) must equal Portfolio Total (${formatCurrency(newPortfolio)})`);
+      alert(`Nick's current value + Joey's current value must equal the Portfolio Total.\n\nNick: ${formatCurrency(newNickValue)}\nJoey: ${formatCurrency(newJoeyValue)}\nSum: ${formatCurrency(totalValues)}\n\nPortfolio Total: ${formatCurrency(newPortfolio)}\n\nNote: These are current portfolio values, not capital contributions.`);
       return;
     }
 
@@ -1256,7 +1256,10 @@ function App() {
               <div className="space-y-4">
                 <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-4 mb-4">
                   <p className="text-blue-300 text-sm">
-                    💡 Manually adjust the portfolio total and individual values. Nick's value + Joey's value must equal the portfolio total.
+                    💡 Manually adjust the portfolio total and each person's current portfolio value. The sum of Nick's value + Joey's value must equal the portfolio total.
+                  </p>
+                  <p className="text-blue-300 text-xs mt-2">
+                    Note: These are current portfolio values (what they own), not capital contributions (what they invested).
                   </p>
                 </div>
 
