@@ -612,16 +612,31 @@ function App() {
       return;
     }
 
-    if (isNaN(newNickValue) || newNickValue < 0 || isNaN(newJoeyValue) || newJoeyValue < 0) {
-      alert('Please enter valid values for Nick and Joey');
-      return;
-    }
+    // If only portfolio total is changed, calculate values based on current ownership
+    const portfolioChanged = newPortfolio !== getLatestPortfolio();
+    const valuesChanged = newNickValue !== currentStats.nickValue || newJoeyValue !== currentStats.joeyValue;
 
-    // Check if values add up to portfolio total (with small tolerance for rounding)
-    const totalValues = newNickValue + newJoeyValue;
-    if (Math.abs(totalValues - newPortfolio) > 0.02) {
-      alert(`Nick's current value + Joey's current value must equal the Portfolio Total.\n\nNick: ${formatCurrency(newNickValue)}\nJoey: ${formatCurrency(newJoeyValue)}\nSum: ${formatCurrency(totalValues)}\n\nPortfolio Total: ${formatCurrency(newPortfolio)}\n\nNote: These are current portfolio values, not capital contributions.`);
-      return;
+    let finalNickValue, finalJoeyValue;
+
+    if (portfolioChanged && !valuesChanged) {
+      // Portfolio changed but individual values didn't - adjust proportionally
+      finalNickValue = (newPortfolio * currentStats.nickOwnership) / 100;
+      finalJoeyValue = (newPortfolio * currentStats.joeyOwnership) / 100;
+    } else {
+      // Individual values were changed - validate they add up
+      if (isNaN(newNickValue) || newNickValue < 0 || isNaN(newJoeyValue) || newJoeyValue < 0) {
+        alert('Please enter valid values for Nick and Joey');
+        return;
+      }
+
+      const totalValues = newNickValue + newJoeyValue;
+      if (Math.abs(totalValues - newPortfolio) > 0.02) {
+        alert(`Nick's current value + Joey's current value must equal the Portfolio Total.\n\nNick: ${formatCurrency(newNickValue)}\nJoey: ${formatCurrency(newJoeyValue)}\nSum: ${formatCurrency(totalValues)}\n\nPortfolio Total: ${formatCurrency(newPortfolio)}\n\nNote: These are current portfolio values, not capital contributions.`);
+        return;
+      }
+
+      finalNickValue = newNickValue;
+      finalJoeyValue = newJoeyValue;
     }
 
     try {
@@ -641,8 +656,8 @@ function App() {
       });
 
       // Calculate new ownership percentages
-      const nickOwnership = (newNickValue / newPortfolio) * 100;
-      const joeyOwnership = (newJoeyValue / newPortfolio) * 100;
+      const nickOwnership = (finalNickValue / newPortfolio) * 100;
+      const joeyOwnership = (finalJoeyValue / newPortfolio) * 100;
 
       // Find the entry before the latest for daily P/L
       const previousValue = entries.length > 1 
@@ -665,10 +680,10 @@ function App() {
         joey_capital: joeyCapital,
         nick_ownership: nickOwnership,
         joey_ownership: joeyOwnership,
-        nick_value: newNickValue,
-        joey_value: newJoeyValue,
-        nick_pl: newNickValue - nickCapital,
-        joey_pl: newJoeyValue - joeyCapital
+        nick_value: finalNickValue,
+        joey_value: finalJoeyValue,
+        nick_pl: finalNickValue - nickCapital,
+        joey_pl: finalJoeyValue - joeyCapital
       };
 
       await fetch(`${API_URL}/add-entry`, {
@@ -1256,10 +1271,10 @@ function App() {
               <div className="space-y-4">
                 <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-4 mb-4">
                   <p className="text-blue-300 text-sm">
-                    💡 Manually adjust the portfolio total and each person's current portfolio value. The sum of Nick's value + Joey's value must equal the portfolio total.
+                    💡 Edit the portfolio total to reflect market gains/losses. Nick and Joey's values will adjust proportionally based on their ownership.
                   </p>
                   <p className="text-blue-300 text-xs mt-2">
-                    Note: These are current portfolio values (what they own), not capital contributions (what they invested).
+                    Or manually adjust individual values - they must add up to the portfolio total.
                   </p>
                 </div>
 
@@ -1271,7 +1286,16 @@ function App() {
                     type="number"
                     step="0.01"
                     value={editPortfolioTotal}
-                    onChange={(e) => setEditPortfolioTotal(e.target.value)}
+                    onChange={(e) => {
+                      const newTotal = e.target.value;
+                      setEditPortfolioTotal(newTotal);
+                      // Auto-update individual values proportionally
+                      if (newTotal && !isNaN(parseFloat(newTotal))) {
+                        const ratio = parseFloat(newTotal) / getLatestPortfolio();
+                        setEditNickValue((currentStats.nickValue * ratio).toFixed(2));
+                        setEditJoeyValue((currentStats.joeyValue * ratio).toFixed(2));
+                      }
+                    }}
                     className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="0.00"
                   />
