@@ -193,16 +193,21 @@ function App() {
       // Get current portfolio value at the time of investment
       const portfolioAtInvestment = getLatestPortfolio();
       
-      // Get current ownership from the latest entry (not from capital table)
-      let oldNickOwnership, oldJoeyOwnership;
+      // Get current ownership and exact values from the latest entry (not from capital table)
+      let oldNickOwnership, oldJoeyOwnership, nickCurrentValue, joeyCurrentValue;
       if (entries.length > 0) {
         oldNickOwnership = parseFloat(entries[0].nick_ownership);
         oldJoeyOwnership = parseFloat(entries[0].joey_ownership);
+        // Use exact stored values to avoid rounding errors
+        nickCurrentValue = parseFloat(entries[0].nick_value);
+        joeyCurrentValue = parseFloat(entries[0].joey_value);
       } else {
         // No entries yet, calculate from capital
         const totalCapital = nickCapital + joeyCapital;
         oldNickOwnership = totalCapital > 0 ? (nickCapital / totalCapital) * 100 : 100;
         oldJoeyOwnership = totalCapital > 0 ? (joeyCapital / totalCapital) * 100 : 0;
+        nickCurrentValue = 0;
+        joeyCurrentValue = 0;
       }
       
       const newNickCapital = capitalPerson === 'nick' ? nickCapital + amount : nickCapital;
@@ -221,19 +226,16 @@ function App() {
         nickValue = capitalPerson === 'nick' ? amount : 0;
         joeyValue = capitalPerson === 'joey' ? amount : 0;
       } else {
-        // Current values based on ownership at time of investment
-        const nickCurrentValue = (portfolioAtInvestment * oldNickOwnership) / 100;
-        const joeyCurrentValue = (portfolioAtInvestment * oldJoeyOwnership) / 100;
-        
+        // Use stored values from previous entry to avoid rounding errors
         if (capitalPerson === 'nick') {
           // Nick adds capital - his value increases by the amount invested
           nickValue = nickCurrentValue + amount;
-          // Joey's value stays the same
+          // Joey's value stays exactly the same
           joeyValue = joeyCurrentValue;
         } else {
           // Joey adds capital - his value increases by the amount invested
           joeyValue = joeyCurrentValue + amount;
-          // Nick's value stays the same
+          // Nick's value stays exactly the same
           nickValue = nickCurrentValue;
         }
         
