@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, TrendingUp, TrendingDown, DollarSign, PiggyBank, RefreshCw, Edit2, MinusCircle, CheckSquare, Square, History } from 'lucide-react';
+import { Trash2, TrendingUp, TrendingDown, DollarSign, PiggyBank, RefreshCw, Edit2, MinusCircle, CheckSquare, Square, History, BarChart3, PieChart, Bell, Settings, Plus, Filter, Calendar, Download, Upload, Target, Award, AlertTriangle } from 'lucide-react';
 
 function App() {
   // Capital tracking
@@ -14,7 +14,14 @@ function App() {
   const [ticker, setTicker] = useState('');
   const [notes, setNotes] = useState('');
   
-  // UI state
+  // New UI state for tabs and views
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, transactions, analytics, settings
+  const [viewMode, setViewMode] = useState('grid'); // grid or list
+  const [dateFilter, setDateFilter] = useState('all'); // all, today, week, month, year
+  const [showQuickAction, setShowQuickAction] = useState(false);
+  const [quickActionType, setQuickActionType] = useState(''); // deposit, withdraw, trade, adjustment
+  
+  // Original UI state
   const [showAddCapital, setShowAddCapital] = useState(false);
   const [showWithdrawCapital, setShowWithdrawCapital] = useState(false);
   const [showEditEntry, setShowEditEntry] = useState(false);
@@ -41,7 +48,7 @@ function App() {
   const [adminJoeyValue, setAdminJoeyValue] = useState('');
   const [adminNickOwnership, setAdminNickOwnership] = useState('');
   const [adminJoeyOwnership, setAdminJoeyOwnership] = useState('');
-  const [adjustmentMode, setAdjustmentMode] = useState('recalculate'); // 'recalculate' or 'independent'
+  const [adjustmentMode, setAdjustmentMode] = useState('recalculate');
 
   // API base URL - works for both Netlify and Vercel
   const API_URL = typeof window !== 'undefined' && window.location.hostname.includes('vercel')
@@ -1060,6 +1067,77 @@ function App() {
     });
   };
 
+  // New Analytics Functions
+  const getFilteredEntries = () => {
+    if (dateFilter === 'all') return entries;
+    
+    const now = new Date();
+    const filtered = entries.filter(entry => {
+      const entryDate = new Date(entry.entry_date);
+      const daysDiff = (now - entryDate) / (1000 * 60 * 60 * 24);
+      
+      switch(dateFilter) {
+        case 'today': return daysDiff < 1;
+        case 'week': return daysDiff < 7;
+        case 'month': return daysDiff < 30;
+        case 'year': return daysDiff < 365;
+        default: return true;
+      }
+    });
+    return filtered;
+  };
+
+  const getPerformanceMetrics = () => {
+    const filteredEntries = getFilteredEntries();
+    if (filteredEntries.length === 0) return null;
+
+    const trades = filteredEntries.filter(e => e.entry_type === 'trade' && e.daily_pl);
+    const winningTrades = trades.filter(t => parseFloat(t.daily_pl) > 0);
+    const losingTrades = trades.filter(t => parseFloat(t.daily_pl) < 0);
+    
+    const totalPL = trades.reduce((sum, t) => sum + parseFloat(t.daily_pl || 0), 0);
+    const avgWin = winningTrades.length > 0 
+      ? winningTrades.reduce((sum, t) => sum + parseFloat(t.daily_pl), 0) / winningTrades.length 
+      : 0;
+    const avgLoss = losingTrades.length > 0
+      ? losingTrades.reduce((sum, t) => sum + parseFloat(t.daily_pl), 0) / losingTrades.length
+      : 0;
+    
+    return {
+      totalTrades: trades.length,
+      winningTrades: winningTrades.length,
+      losingTrades: losingTrades.length,
+      winRate: trades.length > 0 ? (winningTrades.length / trades.length) * 100 : 0,
+      totalPL,
+      avgWin,
+      avgLoss,
+      profitFactor: avgLoss !== 0 ? Math.abs(avgWin / avgLoss) : 0,
+      bestTrade: trades.length > 0 ? Math.max(...trades.map(t => parseFloat(t.daily_pl || 0))) : 0,
+      worstTrade: trades.length > 0 ? Math.min(...trades.map(t => parseFloat(t.daily_pl || 0))) : 0
+    };
+  };
+
+  const getQuickAction = (type) => {
+    setQuickActionType(type);
+    setShowQuickAction(true);
+    
+    // Map to old modals for functionality
+    switch(type) {
+      case 'deposit':
+        setShowAddCapital(true);
+        break;
+      case 'withdraw':
+        setShowWithdrawCapital(true);
+        break;
+      case 'trade':
+        // Show trade entry form
+        break;
+      case 'adjustment':
+        setShowAdminPanel(true);
+        break;
+    }
+  };
+
   if (loading && entries.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -1086,217 +1164,678 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white border-b-4 border-blue-600 shadow-lg mb-8">
-          <div className="px-8 py-6">
-            <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-slate-950">
+      {/* Top Navigation Bar */}
+      <div className="bg-slate-900 border-b-2 border-slate-700">
+        <div className="max-w-[1600px] mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-8">
               <div>
-                <h1 className="text-4xl font-black text-slate-900 tracking-tight uppercase">Portfolio Tracker</h1>
-                <p className="text-slate-600 font-medium mt-1">Nick & Joey's Investment Portfolio</p>
+                <h1 className="text-2xl font-black text-white uppercase tracking-tight">Portfolio Manager</h1>
+                <p className="text-xs text-slate-400 font-medium">Joint Investment Account</p>
               </div>
+              
+              {/* Tab Navigation */}
+              <nav className="flex gap-2">
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className={`px-6 py-2 font-black text-sm uppercase tracking-wide transition-all ${
+                    activeTab === 'dashboard'
+                      ? 'bg-blue-600 text-white border-2 border-blue-500'
+                      : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
+                  }`}
+                >
+                  <BarChart3 className="w-4 h-4 inline mr-2" />
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => setActiveTab('transactions')}
+                  className={`px-6 py-2 font-black text-sm uppercase tracking-wide transition-all ${
+                    activeTab === 'transactions'
+                      ? 'bg-blue-600 text-white border-2 border-blue-500'
+                      : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
+                  }`}
+                >
+                  <History className="w-4 h-4 inline mr-2" />
+                  Transactions
+                </button>
+                <button
+                  onClick={() => setActiveTab('analytics')}
+                  className={`px-6 py-2 font-black text-sm uppercase tracking-wide transition-all ${
+                    activeTab === 'analytics'
+                      ? 'bg-blue-600 text-white border-2 border-blue-500'
+                      : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
+                  }`}
+                >
+                  <PieChart className="w-4 h-4 inline mr-2" />
+                  Analytics
+                </button>
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={`px-6 py-2 font-black text-sm uppercase tracking-wide transition-all ${
+                    activeTab === 'settings'
+                      ? 'bg-blue-600 text-white border-2 border-blue-500'
+                      : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
+                  }`}
+                >
+                  <Settings className="w-4 h-4 inline mr-2" />
+                  Settings
+                </button>
+              </nav>
+            </div>
+
+            <div className="flex items-center gap-3">
               <button
                 onClick={loadData}
                 disabled={loading}
-                className="p-3 bg-slate-100 hover:bg-slate-200 border-2 border-slate-300 text-slate-700 transition-colors disabled:opacity-50"
-                title="Refresh data"
+                className="p-2 bg-slate-800 hover:bg-slate-700 border-2 border-slate-700 text-slate-300 transition-colors disabled:opacity-50"
+                title="Refresh"
               >
-                <RefreshCw className={`w-6 h-6 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={() => getQuickAction('deposit')}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-black text-sm border-2 border-green-500 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                QUICK ADD
               </button>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Current Stats Summary */}
-        <div className="bg-white shadow-lg border-l-8 border-blue-600 mb-8">
-          <div className="px-8 py-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Portfolio Overview</h2>
+      {/* Main Content Area */}
+      <div className="max-w-[1600px] mx-auto p-6">
+        {activeTab === 'dashboard' && (
+          <div className="space-y-6">
+            {/* Key Metrics Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 border-2 border-blue-500">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-blue-100 text-xs font-black uppercase tracking-wider">Portfolio Value</span>
+                  <DollarSign className="w-5 h-5 text-blue-200" />
+                </div>
+                <div className="text-3xl font-black text-white">
+                  {formatCurrency(getLatestPortfolio())}
+                </div>
+                <div className={`text-sm font-bold mt-2 ${currentStats.totalPL >= 0 ? 'text-green-200' : 'text-red-200'}`}>
+                  {currentStats.totalPL >= 0 ? '+' : ''}{formatCurrency(currentStats.totalPL)} ({formatPercent((currentStats.totalPL / currentStats.totalCapital) * 100)})
+                </div>
+              </div>
+
+              <div className="bg-slate-800 p-6 border-2 border-slate-700">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-slate-400 text-xs font-black uppercase tracking-wider">Total Invested</span>
+                  <PiggyBank className="w-5 h-5 text-slate-500" />
+                </div>
+                <div className="text-3xl font-black text-white">
+                  {formatCurrency(currentStats.totalCapital)}
+                </div>
+                <div className="text-sm font-bold text-slate-400 mt-2">
+                  Combined Capital
+                </div>
+              </div>
+
+              <div className="bg-slate-800 p-6 border-2 border-slate-700">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-slate-400 text-xs font-black uppercase tracking-wider">Nick's Share</span>
+                  <TrendingUp className="w-5 h-5 text-red-500" />
+                </div>
+                <div className="text-3xl font-black text-white">
+                  {formatPercent(currentStats.nickOwnership)}
+                </div>
+                <div className="text-sm font-bold text-red-400 mt-2">
+                  {formatCurrency(currentStats.nickValue)}
+                </div>
+              </div>
+
+              <div className="bg-slate-800 p-6 border-2 border-slate-700">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-slate-400 text-xs font-black uppercase tracking-wider">Joey's Share</span>
+                  <TrendingUp className="w-5 h-5 text-cyan-500" />
+                </div>
+                <div className="text-3xl font-black text-white">
+                  {formatPercent(currentStats.joeyOwnership)}
+                </div>
+                <div className="text-sm font-bold text-cyan-400 mt-2">
+                  {formatCurrency(currentStats.joeyValue)}
+                </div>
+              </div>
+            </div>
+
+            {/* Partner Cards Row */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Nick's Card */}
+              <div className="bg-slate-800 border-l-8 border-red-600 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-2xl font-black text-white uppercase">Nick</h3>
+                    <p className="text-sm text-slate-400 font-bold">Partner 1</p>
+                  </div>
+                  <div className="w-16 h-16 bg-red-600 flex items-center justify-center text-white font-black text-2xl border-2 border-red-500">
+                    N
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs text-slate-500 font-black uppercase mb-1">Invested</div>
+                    <div className="text-xl font-black text-white">{formatCurrency(nickCapital)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500 font-black uppercase mb-1">Current Value</div>
+                    <div className="text-xl font-black text-white">{formatCurrency(currentStats.nickValue)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500 font-black uppercase mb-1">Ownership</div>
+                    <div className="text-xl font-black text-red-400">{formatPercent(currentStats.nickOwnership)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500 font-black uppercase mb-1">P/L</div>
+                    <div className={`text-xl font-black ${currentStats.nickPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {formatCurrency(currentStats.nickPL)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t-2 border-slate-700 flex gap-3">
+                  <button
+                    onClick={() => { setCapitalPerson('nick'); getQuickAction('deposit'); }}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black py-3 text-sm border-2 border-red-500"
+                  >
+                    <Plus className="w-4 h-4 inline mr-1" />
+                    DEPOSIT
+                  </button>
+                  <button
+                    onClick={() => { setCapitalPerson('nick'); getQuickAction('withdraw'); }}
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-black py-3 text-sm border-2 border-slate-600"
+                  >
+                    <MinusCircle className="w-4 h-4 inline mr-1" />
+                    WITHDRAW
+                  </button>
+                </div>
+              </div>
+
+              {/* Joey's Card */}
+              <div className="bg-slate-800 border-l-8 border-cyan-600 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-2xl font-black text-white uppercase">Joey</h3>
+                    <p className="text-sm text-slate-400 font-bold">Partner 2</p>
+                  </div>
+                  <div className="w-16 h-16 bg-cyan-600 flex items-center justify-center text-white font-black text-2xl border-2 border-cyan-500">
+                    J
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs text-slate-500 font-black uppercase mb-1">Invested</div>
+                    <div className="text-xl font-black text-white">{formatCurrency(joeyCapital)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500 font-black uppercase mb-1">Current Value</div>
+                    <div className="text-xl font-black text-white">{formatCurrency(currentStats.joeyValue)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500 font-black uppercase mb-1">Ownership</div>
+                    <div className="text-xl font-black text-cyan-400">{formatPercent(currentStats.joeyOwnership)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500 font-black uppercase mb-1">P/L</div>
+                    <div className={`text-xl font-black ${currentStats.joeyPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {formatCurrency(currentStats.joeyPL)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t-2 border-slate-700 flex gap-3">
+                  <button
+                    onClick={() => { setCapitalPerson('joey'); getQuickAction('deposit'); }}
+                    className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white font-black py-3 text-sm border-2 border-cyan-500"
+                  >
+                    <Plus className="w-4 h-4 inline mr-1" />
+                    DEPOSIT
+                  </button>
+                  <button
+                    onClick={() => { setCapitalPerson('joey'); getQuickAction('withdraw'); }}
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-black py-3 text-sm border-2 border-slate-600"
+                  >
+                    <MinusCircle className="w-4 h-4 inline mr-1" />
+                    WITHDRAW
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-slate-800 border-2 border-slate-700 p-6">
+              <h3 className="text-lg font-black text-white uppercase mb-4">Quick Actions</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <button
+                  onClick={() => getQuickAction('trade')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-black py-4 border-2 border-blue-500 flex flex-col items-center gap-2"
+                >
+                  <DollarSign className="w-6 h-6" />
+                  <span className="text-sm">ADD TRADE</span>
+                </button>
+                <button
+                  onClick={() => getQuickAction('adjustment')}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white font-black py-4 border-2 border-yellow-500 flex flex-col items-center gap-2"
+                >
+                  <Edit2 className="w-6 h-6" />
+                  <span className="text-sm">ADJUST</span>
+                </button>
+                <button
+                  onClick={() => openEditValues()}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-black py-4 border-2 border-purple-500 flex flex-col items-center gap-2"
+                >
+                  <Target className="w-6 h-6" />
+                  <span className="text-sm">REBALANCE</span>
+                </button>
+                <button
+                  onClick={() => setDeleteMode(!deleteMode)}
+                  className={`font-black py-4 border-2 flex flex-col items-center gap-2 ${
+                    deleteMode 
+                      ? 'bg-red-600 hover:bg-red-700 text-white border-red-500'
+                      : 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600'
+                  }`}
+                >
+                  <Trash2 className="w-6 h-6" />
+                  <span className="text-sm">{deleteMode ? 'EXIT DELETE' : 'DELETE MODE'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+          </div>
+        )}
+
+        {activeTab === 'transactions' && (
+          <div className="space-y-6">
+            {/* Filters and Controls */}
+            <div className="bg-slate-800 border-2 border-slate-700 p-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-black text-white uppercase mb-2">Transaction History</h3>
+                  <p className="text-sm text-slate-400 font-medium">{getFilteredEntries().length} transactions</p>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  {/* Date Filter */}
+                  <div className="flex gap-2">
+                    {['all', 'today', 'week', 'month', 'year'].map((filter) => (
+                      <button
+                        key={filter}
+                        onClick={() => setDateFilter(filter)}
+                        className={`px-4 py-2 font-black text-xs uppercase tracking-wide ${
+                          dateFilter === filter
+                            ? 'bg-blue-600 text-white border-2 border-blue-500'
+                            : 'bg-slate-700 text-slate-300 border-2 border-slate-600 hover:bg-slate-600'
+                        }`}
+                      >
+                        {filter}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* View Toggle */}
+                  <button
+                    onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+                    className="p-2 bg-slate-700 hover:bg-slate-600 text-white border-2 border-slate-600"
+                    title={`Switch to ${viewMode === 'grid' ? 'list' : 'grid'} view`}
+                  >
+                    {viewMode === 'grid' ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
+                  </button>
+                  
+                  {/* Delete Mode Toggle */}
+                  <button
+                    onClick={() => setDeleteMode(!deleteMode)}
+                    className={`px-4 py-2 font-black text-xs uppercase tracking-wide border-2 ${
+                      deleteMode
+                        ? 'bg-red-600 text-white border-red-500'
+                        : 'bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600'
+                    }`}
+                  >
+                    {deleteMode ? <X className="w-4 h-4 inline mr-1" /> : <Trash2 className="w-4 h-4 inline mr-1" />}
+                    {deleteMode ? 'EXIT' : 'DELETE'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Transaction List */}
+            {getFilteredEntries().length > 0 ? (
+              <div className={viewMode === 'grid' ? 'grid md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
+                {getFilteredEntries().map((entry) => {
+                  const stats = calculateStats(entry.portfolio_value, entry.nick_ownership);
+                  const isCapital = entry.type === 'capital';
+                  const isWithdrawal = entry.type === 'withdrawal';
+                  const isTrade = entry.type === 'trade';
+                  
+                  return (
+                    <div
+                      key={entry.id}
+                      className={`bg-slate-800 border-2 border-slate-700 p-5 ${deleteMode ? 'hover:border-red-500 cursor-pointer' : ''}`}
+                      onClick={() => deleteMode && deleteEntry(entry.id)}
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 flex items-center justify-center border-2 ${
+                            isCapital ? 'bg-green-600 border-green-500' :
+                            isWithdrawal ? 'bg-yellow-600 border-yellow-500' :
+                            'bg-blue-600 border-blue-500'
+                          }`}>
+                            {isCapital ? <ArrowUp className="w-5 h-5 text-white" /> :
+                             isWithdrawal ? <ArrowDown className="w-5 h-5 text-white" /> :
+                             <DollarSign className="w-5 h-5 text-white" />}
+                          </div>
+                          <div>
+                            <div className="text-white font-black text-sm uppercase">
+                              {isCapital ? 'Capital Deposit' :
+                               isWithdrawal ? 'Withdrawal' :
+                               'Trade Execution'}
+                            </div>
+                            <div className="text-slate-400 text-xs font-medium">
+                              {new Date(entry.timestamp).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                        {deleteMode && (
+                          <div className="w-6 h-6 bg-red-600 flex items-center justify-center">
+                            <Trash2 className="w-4 h-4 text-white" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <div className="text-xs text-slate-500 font-black uppercase mb-1">Portfolio</div>
+                          <div className="text-white font-black">{formatCurrency(entry.portfolio_value)}</div>
+                        </div>
+                        {(isCapital || isWithdrawal) && (
+                          <div>
+                            <div className="text-xs text-slate-500 font-black uppercase mb-1">
+                              {entry.person === 'nick' ? 'Nick' : 'Joey'}
+                            </div>
+                            <div className={`font-black ${entry.person === 'nick' ? 'text-red-400' : 'text-cyan-400'}`}>
+                              {formatCurrency(entry.amount)}
+                            </div>
+                          </div>
+                        )}
+                        <div>
+                          <div className="text-xs text-slate-500 font-black uppercase mb-1">Nick</div>
+                          <div className="text-red-400 font-black">{formatPercent(entry.nick_ownership)}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-slate-500 font-black uppercase mb-1">Joey</div>
+                          <div className="text-cyan-400 font-black">{formatPercent(100 - entry.nick_ownership)}</div>
+                        </div>
+                      </div>
+                      
+                      {entry.note && (
+                        <div className="mt-3 pt-3 border-t-2 border-slate-700">
+                          <div className="text-xs text-slate-400 font-medium">{entry.note}</div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="bg-slate-800 border-2 border-slate-700 p-12 text-center">
+                <AlertCircle className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                <h3 className="text-lg font-black text-white uppercase mb-2">No Transactions</h3>
+                <p className="text-slate-400 font-medium">No transactions found for the selected time period</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            {/* Performance Metrics */}
+            <div className="bg-slate-800 border-2 border-slate-700 p-6">
+              <h3 className="text-lg font-black text-white uppercase mb-6">Performance Metrics</h3>
+              
+              {(() => {
+                const metrics = getPerformanceMetrics();
+                return (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                      <div className="bg-slate-900 border-2 border-slate-700 p-4">
+                        <div className="text-xs text-slate-500 font-black uppercase mb-1">Total Trades</div>
+                        <div className="text-3xl font-black text-white">{metrics.totalTrades}</div>
+                      </div>
+                      <div className="bg-slate-900 border-2 border-slate-700 p-4">
+                        <div className="text-xs text-slate-500 font-black uppercase mb-1">Win Rate</div>
+                        <div className={`text-3xl font-black ${metrics.winRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+                          {formatPercent(metrics.winRate)}
+                        </div>
+                      </div>
+                      <div className="bg-slate-900 border-2 border-slate-700 p-4">
+                        <div className="text-xs text-slate-500 font-black uppercase mb-1">Profit Factor</div>
+                        <div className={`text-3xl font-black ${metrics.profitFactor >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                          {metrics.profitFactor.toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="bg-slate-900 border-2 border-slate-700 p-4">
+                        <div className="text-xs text-slate-500 font-black uppercase mb-1">Net P/L</div>
+                        <div className={`text-3xl font-black ${metrics.totalPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {formatCurrency(metrics.totalPL)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6">
+                      {/* Win/Loss Breakdown */}
+                      <div className="bg-slate-900 border-2 border-slate-700 p-5">
+                        <h4 className="text-sm font-black text-white uppercase mb-4">Trade Breakdown</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-400 text-sm font-bold">Winning Trades</span>
+                            <span className="text-green-400 font-black">{metrics.winningTrades} ({formatPercent(metrics.winRate)})</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-400 text-sm font-bold">Losing Trades</span>
+                            <span className="text-red-400 font-black">{metrics.losingTrades} ({formatPercent(100 - metrics.winRate)})</span>
+                          </div>
+                          <div className="pt-3 border-t-2 border-slate-700">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-slate-400 text-sm font-bold">Average Win</span>
+                              <span className="text-green-400 font-black">{formatCurrency(metrics.avgWin)}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-400 text-sm font-bold">Average Loss</span>
+                              <span className="text-red-400 font-black">{formatCurrency(metrics.avgLoss)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Best/Worst Trades */}
+                      <div className="bg-slate-900 border-2 border-slate-700 p-5">
+                        <h4 className="text-sm font-black text-white uppercase mb-4">Extreme Trades</h4>
+                        <div className="space-y-3">
+                          <div className="bg-green-950 border-2 border-green-700 p-3">
+                            <div className="text-xs text-green-400 font-black uppercase mb-1">Best Trade</div>
+                            <div className="text-2xl font-black text-green-400">
+                              <Award className="w-5 h-5 inline mr-2" />
+                              {formatCurrency(metrics.bestTrade)}
+                            </div>
+                          </div>
+                          <div className="bg-red-950 border-2 border-red-700 p-3">
+                            <div className="text-xs text-red-400 font-black uppercase mb-1">Worst Trade</div>
+                            <div className="text-2xl font-black text-red-400">
+                              <AlertTriangle className="w-5 h-5 inline mr-2" />
+                              {formatCurrency(metrics.worstTrade)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Ownership Distribution */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-slate-800 border-2 border-slate-700 p-6">
+                <h3 className="text-lg font-black text-white uppercase mb-4">Ownership Distribution</h3>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-red-400 font-black text-sm">Nick</span>
+                      <span className="text-white font-black">{formatPercent(currentStats.nickOwnership)}</span>
+                    </div>
+                    <div className="h-8 bg-slate-900 border-2 border-slate-700 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-red-600 to-red-500 border-r-4 border-red-400"
+                        style={{ width: `${currentStats.nickOwnership}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-cyan-400 font-black text-sm">Joey</span>
+                      <span className="text-white font-black">{formatPercent(currentStats.joeyOwnership)}</span>
+                    </div>
+                    <div className="h-8 bg-slate-900 border-2 border-slate-700 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-cyan-600 to-cyan-500 border-r-4 border-cyan-400"
+                        style={{ width: `${currentStats.joeyOwnership}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-800 border-2 border-slate-700 p-6">
+                <h3 className="text-lg font-black text-white uppercase mb-4">Value Distribution</h3>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-red-400 font-black text-sm">Nick's Value</span>
+                      <span className="text-white font-black">{formatCurrency(currentStats.nickValue)}</span>
+                    </div>
+                    <div className="text-xs text-slate-400 font-medium">
+                      P/L: <span className={currentStats.nickPL >= 0 ? 'text-green-400' : 'text-red-400'}>
+                        {formatCurrency(currentStats.nickPL)}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-cyan-400 font-black text-sm">Joey's Value</span>
+                      <span className="text-white font-black">{formatCurrency(currentStats.joeyValue)}</span>
+                    </div>
+                    <div className="text-xs text-slate-400 font-medium">
+                      P/L: <span className={currentStats.joeyPL >= 0 ? 'text-green-400' : 'text-red-400'}>
+                        {formatCurrency(currentStats.joeyPL)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+            {/* Admin Panel */}
+            <div className="bg-slate-800 border-2 border-slate-700 p-6">
+              <h3 className="text-lg font-black text-white uppercase mb-4">Admin Controls</h3>
               <button
                 onClick={openEditValues}
                 disabled={loading || entries.length === 0}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border-2 border-blue-700"
-                title="Edit all values"
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-black py-4 border-2 border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                <Edit2 className="w-4 h-4" />
-                <span className="text-sm">EDIT VALUES</span>
+                <Edit2 className="w-5 h-5" />
+                OPEN ADMIN PANEL
               </button>
+              <p className="text-slate-400 text-sm font-medium mt-3">
+                Manually adjust portfolio values, ownership percentages, and capital amounts. Use with caution.
+              </p>
             </div>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="bg-slate-50 border-2 border-slate-200 p-6">
-                <div className="text-slate-600 text-xs font-bold uppercase tracking-wider mb-2">Portfolio Value</div>
-                <div className="text-4xl font-black text-slate-900">
-                  {formatCurrency(getLatestPortfolio())}
-                </div>
+
+            {/* Restore to History */}
+            <div className="bg-slate-800 border-2 border-slate-700 p-6">
+              <h3 className="text-lg font-black text-white uppercase mb-4">Restore to History Point</h3>
+              <button
+                onClick={() => openDepositHistory('restore')}
+                disabled={loading || entries.length === 0}
+                className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-black py-4 border-2 border-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <History className="w-5 h-5" />
+                VIEW HISTORY & RESTORE
+              </button>
+              <p className="text-slate-400 text-sm font-medium mt-3">
+                Roll back to any previous transaction point. This will delete all entries after the selected point.
+              </p>
+            </div>
+
+            {/* Data Management */}
+            <div className="bg-slate-800 border-2 border-slate-700 p-6">
+              <h3 className="text-lg font-black text-white uppercase mb-4">Data Management</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <button
+                  className="bg-slate-700 hover:bg-slate-600 text-white font-black py-4 border-2 border-slate-600 flex items-center justify-center gap-2"
+                  disabled
+                >
+                  <Download className="w-5 h-5" />
+                  EXPORT DATA
+                </button>
+                <button
+                  className="bg-slate-700 hover:bg-slate-600 text-white font-black py-4 border-2 border-slate-600 flex items-center justify-center gap-2"
+                  disabled
+                >
+                  <Upload className="w-5 h-5" />
+                  IMPORT DATA
+                </button>
               </div>
-              <div className="bg-slate-50 border-2 border-slate-200 p-6">
-                <div className="text-slate-600 text-xs font-bold uppercase tracking-wider mb-2">Total Invested</div>
-                <div className="text-4xl font-black text-slate-900">
-                  {formatCurrency(currentStats.totalCapital)}
+              <p className="text-slate-400 text-sm font-medium mt-3">
+                Export your portfolio data to CSV or import from a backup. (Coming soon)
+              </p>
+            </div>
+
+            {/* System Info */}
+            <div className="bg-slate-800 border-2 border-slate-700 p-6">
+              <h3 className="text-lg font-black text-white uppercase mb-4">System Information</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-400 font-bold">Total Entries</span>
+                  <span className="text-white font-black">{entries.length}</span>
                 </div>
-              </div>
-              <div className="bg-slate-50 border-2 border-slate-200 p-6">
-                <div className="text-slate-600 text-xs font-bold uppercase tracking-wider mb-2">Total P/L</div>
-                <div className={`text-4xl font-black flex items-center gap-2 ${
-                  currentStats.totalPL >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {currentStats.totalPL >= 0 ? <TrendingUp className="w-8 h-8" /> : <TrendingDown className="w-8 h-8" />}
-                  {formatCurrency(currentStats.totalPL)}
+                <div className="flex justify-between">
+                  <span className="text-slate-400 font-bold">Database</span>
+                  <span className="text-white font-black">Neon PostgreSQL</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 font-bold">Deployment</span>
+                  <span className="text-white font-black">Netlify Functions</span>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* Live Position Stats */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Nick's Box */}
-          <div className="bg-white shadow-lg border-t-8 border-red-600">
-            <div className="px-8 py-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-4 h-4 bg-red-600"></div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Nick's Position</h3>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3">
-                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Total Invested</span>
-                  <span className="text-xl font-black text-slate-900">
-                    {formatCurrency(nickCapital)}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3">
-                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Ownership</span>
-                  <span className="text-2xl font-black text-red-600">
-                    {formatPercent(currentStats.nickOwnership)}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3">
-                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Current Value</span>
-                  <span className="text-2xl font-black text-slate-900">
-                    {formatCurrency(currentStats.nickValue)}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center pt-4 border-t-4 border-slate-200">
-                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Profit/Loss</span>
-                  <span className={`text-2xl font-black flex items-center gap-2 ${
-                    currentStats.nickPL >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {currentStats.nickPL >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
-                    {formatCurrency(currentStats.nickPL)}
-                  </span>
-                </div>
-                
-                <div className="bg-red-50 border-2 border-red-200 p-4 mt-6">
-                  <div className="text-xs font-bold text-red-600 uppercase tracking-wider mb-1">Amount Owed</div>
-                  <div className="text-3xl font-black text-red-900">
-                    {formatCurrency(currentStats.nickValue)}
-                  </div>
-                </div>
-                
-                <button
-                  onClick={() => openDepositHistory('nick')}
-                  className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-3 transition-colors flex items-center justify-center gap-2 border-2 border-red-700"
-                >
-                  <History className="w-4 h-4" />
-                  DEPOSIT HISTORY
+      {/* All Modals (unchanged) */}
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Joey's Box */}
-          <div className="bg-white shadow-lg border-t-8 border-cyan-600">
-            <div className="px-8 py-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-4 h-4 bg-cyan-600"></div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Joey's Position</h3>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3">
-                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Total Invested</span>
-                  <span className="text-xl font-black text-slate-900">
-                    {formatCurrency(joeyCapital)}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3">
-                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Ownership</span>
-                  <span className="text-2xl font-black text-cyan-600">
-                    {formatPercent(currentStats.joeyOwnership)}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3">
-                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Current Value</span>
-                  <span className="text-2xl font-black text-slate-900">
-                    {formatCurrency(currentStats.joeyValue)}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center pt-4 border-t-4 border-slate-200">
-                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Profit/Loss</span>
-                  <span className={`text-2xl font-black flex items-center gap-2 ${
-                    currentStats.joeyPL >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {currentStats.joeyPL >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
-                    {formatCurrency(currentStats.joeyPL)}
-                  </span>
-                </div>
-                
-                <div className="bg-cyan-50 border-2 border-cyan-200 p-4 mt-6">
-                  <div className="text-xs font-bold text-cyan-600 uppercase tracking-wider mb-1">Amount Owed</div>
-                  <div className="text-3xl font-black text-cyan-900">
-                    {formatCurrency(currentStats.joeyValue)}
-                  </div>
-                </div>
-                
-                <button
-                  onClick={() => openDepositHistory('joey')}
-                  className="w-full mt-4 bg-cyan-600 hover:bg-cyan-700 text-white font-bold px-4 py-3 transition-colors flex items-center justify-center gap-2 border-2 border-cyan-700"
-                >
-                  <History className="w-4 h-4" />
-                  DEPOSIT HISTORY
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Add/Withdraw Capital Buttons */}
-        <div className="mb-8 flex flex-wrap justify-center gap-4">
-          <button
-            onClick={() => setShowAddCapital(true)}
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-black py-4 px-10 transition-colors shadow-lg flex items-center gap-3 disabled:opacity-50 border-2 border-blue-700 uppercase tracking-wide"
-          >
-            <PiggyBank className="w-5 h-5" />
-            Add Capital
-          </button>
-          <button
-            onClick={() => setShowWithdrawCapital(true)}
-            disabled={loading}
-            className="bg-red-600 hover:bg-red-700 text-white font-black py-4 px-10 transition-colors shadow-lg flex items-center gap-3 disabled:opacity-50 border-2 border-red-700 uppercase tracking-wide"
-          >
-            <MinusCircle className="w-5 h-5" />
-            Withdraw
-          </button>
-          <button
-            onClick={openAdminPanel}
-            disabled={loading}
-            className="bg-yellow-600 hover:bg-yellow-700 text-white font-black py-4 px-10 transition-colors shadow-lg flex items-center gap-3 disabled:opacity-50 border-2 border-yellow-700 uppercase tracking-wide"
-          >
-            <Edit2 className="w-5 h-5" />
-            Admin Panel
-          </button>
-        </div>
-
-        {/* Add Capital Modal */}
+          {/* Add Capital Modal */}
         {showAddCapital && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
             <div className="bg-white shadow-2xl p-8 max-w-md w-full border-t-8 border-blue-600">
