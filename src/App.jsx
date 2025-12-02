@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, TrendingUp, TrendingDown, DollarSign, PiggyBank, RefreshCw, Edit2, MinusCircle, CheckSquare, Square, History, BarChart3, PieChart, Bell, Settings, Plus, Filter, Calendar, Download, Upload, Target, Award, AlertTriangle } from 'lucide-react';
+import { Trash2, TrendingUp, TrendingDown, DollarSign, PiggyBank, RefreshCw, Edit2, MinusCircle, CheckSquare, Square, History, BarChart3, PieChart, Bell, Settings, Plus, Filter, Calendar, Download, Upload, Target, Award, AlertTriangle, List, LayoutGrid, ArrowUp, ArrowDown, AlertCircle, X } from 'lucide-react';
 
 function App() {
   // Capital tracking
