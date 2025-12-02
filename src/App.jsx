@@ -50,15 +50,40 @@ function App() {
   const [adminJoeyOwnership, setAdminJoeyOwnership] = useState('');
   const [adjustmentMode, setAdjustmentMode] = useState('recalculate');
 
-  // API base URL - works for both Netlify and Vercel
-  const API_URL = typeof window !== 'undefined' && window.location.hostname.includes('vercel')
-    ? '/api'
-    : '/.netlify/functions';
+  // API base URL
+  // Priority:
+  // 1) VITE_API_BASE_URL (set this in dev to your deployed API, e.g. https://<app>.vercel.app/api)
+  // 2) If on Vercel host -> '/api'
+  // 3) Else assume Netlify functions path
+  const API_URL = (() => {
+    const envUrl = import.meta?.env?.VITE_API_BASE_URL;
+    if (envUrl) return envUrl.replace(/\/$/, '');
+    if (typeof window !== 'undefined' && window.location.hostname.includes('vercel')) return '/api';
+    if (import.meta?.env?.DEV) {
+      console.warn('[API] No VITE_API_BASE_URL set. In local dev, calls to serverless endpoints will fail unless running a dev functions server with a proxy.');
+    }
+    return '/.netlify/functions';
+  })();
 
   // Load data on mount
   useEffect(() => {
     loadData();
   }, []);
+
+  // Helper: strict JSON fetch for clearer dev errors
+  const fetchJson = async (url, options) => {
+    const res = await fetch(url, options);
+    const ct = res.headers.get('content-type') || '';
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`Request failed ${res.status} ${res.statusText}: ${body.slice(0,120)}`);
+    }
+    if (!ct.includes('application/json')) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`Non-JSON response at ${url}. Received content-type '${ct}'. Body preview: ${body.slice(0,120)}`);
+    }
+    return res.json();
+  };
 
   const loadData = async () => {
     try {
@@ -66,9 +91,7 @@ function App() {
       setError(null);
 
       // Fetch capital
-      const capitalRes = await fetch(`${API_URL}/get-capital`);
-      if (!capitalRes.ok) throw new Error('Failed to fetch capital');
-      const capitalData = await capitalRes.json();
+      const capitalData = await fetchJson(`${API_URL}/get-capital`);
       
       capitalData.forEach(c => {
         if (c.person === 'nick') setNickCapital(parseFloat(c.total_invested));
@@ -76,9 +99,7 @@ function App() {
       });
 
       // Fetch entries
-      const entriesRes = await fetch(`${API_URL}/get-entries`);
-      if (!entriesRes.ok) throw new Error('Failed to fetch entries');
-      const entriesData = await entriesRes.json();
+      const entriesData = await fetchJson(`${API_URL}/get-entries`);
       setEntries(entriesData);
 
       setLoading(false);
