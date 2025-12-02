@@ -11,10 +11,12 @@ export async function handler(event) {
   try {
     const sql = neon(process.env.DATABASE_URL);
     
+
     const capital = await sql`
-      SELECT person, total_invested, updated_at
-      FROM capital
-      ORDER BY person
+      SELECT name as person, total_invested, updated_at
+      FROM partners
+      WHERE active = true
+      ORDER BY name
     `;
 
     return {

@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Trash2, TrendingUp, TrendingDown, DollarSign, PiggyBank, RefreshCw, Edit2, MinusCircle, CheckSquare, Square, History, BarChart3, PieChart, Bell, Settings, Plus, Filter, Calendar, Download, Upload, Target, Award, AlertTriangle, List, LayoutGrid, ArrowUp, ArrowDown, AlertCircle, X } from 'lucide-react';
 
 function App() {
-  // Capital tracking
-  const [nickCapital, setNickCapital] = useState(600);
-  const [joeyCapital, setJoeyCapital] = useState(0);
+  // Partner management - NEW DYNAMIC SYSTEM
+  const [partners, setPartners] = useState([]);
+  const [partnerCapitals, setPartnerCapitals] = useState({}); // { partnerId: capital }
+  
+  // Backward compatibility helpers (computed from partners)
+  const nickCapital = partners.find(p => p.name === 'nick')?.total_invested || 600;
+  const joeyCapital = partners.find(p => p.name === 'joey')?.total_invested || 0;
   
   // Daily entry inputs
   const [entries, setEntries] = useState([]);
@@ -28,7 +32,7 @@ function App() {
   const [showEditPortfolio, setShowEditPortfolio] = useState(false);
   const [showEditValues, setShowEditValues] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
-  const [capitalPerson, setCapitalPerson] = useState('nick');
+  const [selectedPartnerId, setSelectedPartnerId] = useState(null); // NEW: replaces capitalPerson
   const [capitalAmount, setCapitalAmount] = useState('');
   const [newPortfolioValue, setNewPortfolioValue] = useState('');
   const [editNickValue, setEditNickValue] = useState('');
@@ -90,13 +94,33 @@ function App() {
       setLoading(true);
       setError(null);
 
-      // Fetch capital
+      // Fetch capital data (old schema for now)
       const capitalData = await fetchJson(`${API_URL}/get-capital`);
       
-      capitalData.forEach(c => {
-        if (c.person === 'nick') setNickCapital(parseFloat(c.total_invested));
-        if (c.person === 'joey') setJoeyCapital(parseFloat(c.total_invested));
+      // Convert old capital format to partners format for compatibility
+      const mockPartners = capitalData.map((c, index) => ({
+        id: index + 1,
+        name: c.person,
+        display_name: c.person === 'nick' ? 'Nick' : c.person === 'joey' ? 'Joey' : c.person,
+        color: c.person === 'nick' ? '#ef4444' : '#06b6d4',
+        total_invested: parseFloat(c.total_invested),
+        active: true
+      }));
+      
+      setPartners(mockPartners);
+      
+      // Build partnerCapitals object for quick lookup
+      const capitals = {};
+      mockPartners.forEach(p => {
+        capitals[p.id] = p.total_invested;
       });
+      setPartnerCapitals(capitals);
+      
+      // Set default selected partner (Nick = id 1)
+      if (mockPartners.length > 0 && !selectedPartnerId) {
+        const nickPartner = mockPartners.find(p => p.name === 'nick');
+        setSelectedPartnerId(nickPartner?.id || mockPartners[0].id);
+      }
 
       // Fetch entries
       const entriesData = await fetchJson(`${API_URL}/get-entries`);
@@ -112,50 +136,108 @@ function App() {
 
   const calculateStats = (portfolio) => {
     const portfolioNum = parseFloat(portfolio) || 0;
-    const totalCapital = nickCapital + joeyCapital;
-
+    
+    // Calculate total capital from all partners
+    const totalCapital = partners.reduce((sum, p) => sum + p.total_invested, 0);
+    
     // Get ownership percentages from the latest entry if it exists
-    let nickOwnership, joeyOwnership;
+    const partnerStats = [];
+    
     if (entries.length > 0) {
-      nickOwnership = parseFloat(entries[0].nick_ownership) || 0;
-      joeyOwnership = parseFloat(entries[0].joey_ownership) || 0;
-    } else {
-      // No entries yet, calculate from capital
-      if (totalCapital > 0) {
-        nickOwnership = (nickCapital / totalCapital) * 100;
-        joeyOwnership = (joeyCapital / totalCapital) * 100;
+      // Check if entry has new partners array format or old hardcoded columns
+      if (entries[0].partners) {
+        // New format with partners array
+        entries[0].partners.forEach(entryPartner => {
+          const partner = partners.find(p => p.id === entryPartner.partner_id);
+          if (partner) {
+            const ownership = parseFloat(entryPartner.ownership) || 0;
+            const value = portfolioNum > 0 ? (portfolioNum * ownership) / 100 : 0;
+            const pl = value - partner.total_invested;
+            
+            partnerStats.push({
+              id: partner.id,
+              name: partner.name,
+              display_name: partner.display_name,
+              color: partner.color,
+              capital: partner.total_invested,
+              ownership,
+              value,
+              pl
+            });
+          }
+        });
       } else {
-        // No capital invested yet - default to Nick 100%
-        nickOwnership = 100;
-        joeyOwnership = 0;
+        // Old format with hardcoded nick/joey columns
+        partners.forEach(partner => {
+          let ownership = 0;
+          if (partner.name === 'nick' && entries[0].nick_ownership !== undefined) {
+            ownership = parseFloat(entries[0].nick_ownership) || 0;
+          } else if (partner.name === 'joey' && entries[0].joey_ownership !== undefined) {
+            ownership = parseFloat(entries[0].joey_ownership) || 0;
+          }
+          
+          const value = portfolioNum > 0 ? (portfolioNum * ownership) / 100 : 0;
+          const pl = value - partner.total_invested;
+          
+          partnerStats.push({
+            id: partner.id,
+            name: partner.name,
+            display_name: partner.display_name,
+            color: partner.color,
+            capital: partner.total_invested,
+            ownership,
+            value,
+            pl
+          });
+        });
       }
+    } else {
+      // No entries yet, calculate ownership from capital
+      partners.forEach(partner => {
+        const ownership = totalCapital > 0 ? (partner.total_invested / totalCapital) * 100 : 0;
+        const value = portfolioNum > 0 ? (portfolioNum * ownership) / 100 : 0;
+        const pl = value - partner.total_invested;
+        
+        partnerStats.push({
+          id: partner.id,
+          name: partner.name,
+          display_name: partner.display_name,
+          color: partner.color,
+          capital: partner.total_invested,
+          ownership,
+          value,
+          pl
+        });
+      });
     }
 
-    // Ensure ownership percentages are valid
-    const ownershipSum = nickOwnership + joeyOwnership;
+    // Normalize ownership to 100% if needed
+    const ownershipSum = partnerStats.reduce((sum, p) => sum + p.ownership, 0);
     if (ownershipSum > 0 && Math.abs(ownershipSum - 100) > 0.01) {
-      // Normalize to 100%
-      nickOwnership = (nickOwnership / ownershipSum) * 100;
-      joeyOwnership = (joeyOwnership / ownershipSum) * 100;
+      partnerStats.forEach(p => {
+        p.ownership = (p.ownership / ownershipSum) * 100;
+        p.value = portfolioNum > 0 ? (portfolioNum * p.ownership) / 100 : 0;
+        p.pl = p.value - p.capital;
+      });
     }
 
-    // Calculate values based on portfolio and ownership
-    const nickValue = portfolioNum > 0 ? (portfolioNum * nickOwnership) / 100 : 0;
-    const joeyValue = portfolioNum > 0 ? (portfolioNum * joeyOwnership) / 100 : 0;
-
-    const nickPL = nickValue - nickCapital;
-    const joeyPL = joeyValue - joeyCapital;
     const totalPL = portfolioNum - totalCapital;
+    
+    // Backward compatibility: add nick/joey specific fields for gradual migration
+    const nickStats = partnerStats.find(p => p.name === 'nick');
+    const joeyStats = partnerStats.find(p => p.name === 'joey');
 
     return {
-      nickOwnership,
-      joeyOwnership,
-      nickValue,
-      joeyValue,
-      nickPL,
-      joeyPL,
+      partners: partnerStats,
+      totalCapital,
       totalPL,
-      totalCapital
+      // Backward compatibility
+      nickOwnership: nickStats?.ownership || 0,
+      joeyOwnership: joeyStats?.ownership || 0,
+      nickValue: nickStats?.value || 0,
+      joeyValue: joeyStats?.value || 0,
+      nickPL: nickStats?.pl || 0,
+      joeyPL: joeyStats?.pl || 0
     };
   };
 
@@ -186,6 +268,15 @@ function App() {
 
       const stats = calculateStats(portfolioVal);
 
+      // Build partners array for new schema
+      const partnersData = stats.partners.map(p => ({
+        partner_id: p.id,
+        capital: p.capital,
+        ownership: p.ownership,
+        value: p.value,
+        pl: p.pl
+      }));
+
       const entryData = {
         entry_type: 'trade',
         portfolio_value: portfolioVal,
@@ -194,14 +285,7 @@ function App() {
         contracts: contracts || null,
         notes: notes || null,
         daily_pl: previousValue > 0 ? dailyPL : 0,
-        nick_capital: nickCapital,
-        joey_capital: joeyCapital,
-        nick_ownership: stats.nickOwnership,
-        joey_ownership: stats.joeyOwnership,
-        nick_value: stats.nickValue,
-        joey_value: stats.joeyValue,
-        nick_pl: stats.nickPL,
-        joey_pl: stats.joeyPL
+        partners: partnersData // NEW: send partners array instead of hardcoded columns
       };
 
       const response = await fetch(`${API_URL}/add-entry`, {
@@ -236,6 +320,11 @@ function App() {
       return;
     }
 
+    if (!selectedPartnerId) {
+      alert('Please select a partner');
+      return;
+    }
+
     // Prevent extremely large amounts
     if (amount > 1000000000) {
       alert('Amount is too large');
@@ -246,10 +335,11 @@ function App() {
       setLoading(true);
 
       // Update capital in database
+      const selectedPartner = partners.find(p => p.id === selectedPartnerId);
       const response = await fetch(`${API_URL}/update-capital`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ person: capitalPerson, amount })
+        body: JSON.stringify({ person: selectedPartner?.name, amount })
       });
 
       if (!response.ok) throw new Error('Failed to update capital');
@@ -257,80 +347,56 @@ function App() {
       // Get current portfolio value at the time of investment
       const portfolioAtInvestment = getLatestPortfolio();
       
-      // Get current ownership and exact values from the latest entry
-      let nickCurrentValue, joeyCurrentValue;
-      if (entries.length > 0) {
-        nickCurrentValue = parseFloat(entries[0].nick_value) || 0;
-        joeyCurrentValue = parseFloat(entries[0].joey_value) || 0;
+      // Get current values from the latest entry
+      let currentPartnerValues = {};
+      if (entries.length > 0 && entries[0].partners) {
+        entries[0].partners.forEach(p => {
+          currentPartnerValues[p.partner_id] = parseFloat(p.value) || 0;
+        });
       } else {
-        // No entries yet - starting from zero
-        nickCurrentValue = 0;
-        joeyCurrentValue = 0;
+        // No entries yet - all start at zero
+        partners.forEach(p => {
+          currentPartnerValues[p.id] = 0;
+        });
       }
-      
-      const newNickCapital = capitalPerson === 'nick' ? nickCapital + amount : nickCapital;
-      const newJoeyCapital = capitalPerson === 'joey' ? joeyCapital + amount : joeyCapital;
       
       // Portfolio increases by the new capital investment
       const newPortfolio = portfolioAtInvestment + amount;
       
-      // Calculate ownership and values
-      let nickOwnership, joeyOwnership, nickValue, joeyValue;
+      // Calculate new values and ownership for all partners
+      const partnersData = [];
       
-      if (portfolioAtInvestment === 0 || (nickCurrentValue === 0 && joeyCurrentValue === 0)) {
-        // First investment - whoever invests gets 100%
-        if (capitalPerson === 'nick') {
-          nickValue = amount;
-          joeyValue = 0;
-          nickOwnership = 100;
-          joeyOwnership = 0;
-        } else {
-          nickValue = 0;
-          joeyValue = amount;
-          nickOwnership = 0;
-          joeyOwnership = 100;
-        }
-      } else {
-        // Subsequent investment - person's value increases, other stays same
-        if (capitalPerson === 'nick') {
-          nickValue = nickCurrentValue + amount;
-          joeyValue = joeyCurrentValue;
-        } else {
-          joeyValue = joeyCurrentValue + amount;
-          nickValue = nickCurrentValue;
-        }
+      partners.forEach(partner => {
+        const newCapital = partner.id === selectedPartnerId ? partner.total_invested + amount : partner.total_invested;
+        const currentValue = currentPartnerValues[partner.id] || 0;
+        const newValue = partner.id === selectedPartnerId ? currentValue + amount : currentValue;
+        const newOwnership = newPortfolio > 0 ? (newValue / newPortfolio) * 100 : 0;
+        const newPL = newValue - newCapital;
         
-        // Recalculate ownership percentages
-        if (newPortfolio > 0) {
-          nickOwnership = (nickValue / newPortfolio) * 100;
-          joeyOwnership = (joeyValue / newPortfolio) * 100;
-        } else {
-          nickOwnership = 50;
-          joeyOwnership = 50;
-        }
-      }
+        partnersData.push({
+          partner_id: partner.id,
+          capital: newCapital,
+          ownership: newOwnership,
+          value: newValue,
+          pl: newPL
+        });
+      });
       
-      // Ensure ownership sums to exactly 100%
-      const ownershipSum = nickOwnership + joeyOwnership;
-      if (Math.abs(ownershipSum - 100) > 0.001) {
-        nickOwnership = (nickOwnership / ownershipSum) * 100;
-        joeyOwnership = (joeyOwnership / ownershipSum) * 100;
+      // Normalize ownership to 100%
+      const ownershipSum = partnersData.reduce((sum, p) => sum + p.ownership, 0);
+      if (ownershipSum > 0 && Math.abs(ownershipSum - 100) > 0.001) {
+        partnersData.forEach(p => {
+          p.ownership = (p.ownership / ownershipSum) * 100;
+        });
       }
 
       const entryData = {
         entry_type: 'capital',
         portfolio_value: newPortfolio,
-        capital_person: capitalPerson,
+        capital_person: selectedPartner?.name || null,
         capital_amount: amount,
-        nick_capital: newNickCapital,
-        joey_capital: newJoeyCapital,
-        nick_ownership: nickOwnership,
-        joey_ownership: joeyOwnership,
-        nick_value: nickValue,
-        joey_value: joeyValue,
-        nick_pl: nickValue - newNickCapital,
-        joey_pl: joeyValue - newJoeyCapital,
-        notes: `${capitalPerson === 'nick' ? 'Nick' : 'Joey'} added ${formatCurrency(amount)} at portfolio value ${formatCurrency(portfolioAtInvestment)}`
+        partners: partnersData,
+        notes: `${selectedPartner?.display_name || 'Partner'} added ${formatCurrency(amount)} at portfolio value ${formatCurrency(portfolioAtInvestment)}`
       };
 
       await fetch(`${API_URL}/add-entry`, {
@@ -483,6 +549,11 @@ function App() {
       return;
     }
 
+    if (!selectedPartnerId) {
+      alert('Please select a partner');
+      return;
+    }
+
     // Get current portfolio and calculate current values
     const currentPortfolio = getLatestPortfolio();
     if (currentPortfolio <= 0) {
@@ -491,7 +562,14 @@ function App() {
     }
 
     const currentStats = calculateStats(currentPortfolio);
-    const currentValue = capitalPerson === 'nick' ? currentStats.nickValue : currentStats.joeyValue;
+    const partnerStats = currentStats.partners.find(p => p.id === selectedPartnerId);
+    
+    if (!partnerStats) {
+      alert('Partner not found');
+      return;
+    }
+    
+    const currentValue = partnerStats.value;
     
     // Ensure withdrawal doesn't exceed current value (with small tolerance)
     if (amount > currentValue + 0.01) {
@@ -506,10 +584,11 @@ function App() {
       setLoading(true);
 
       // Update capital in database (negative amount for withdrawal)
+      const withdrawingPartner = partners.find(p => p.id === selectedPartnerId);
       const response = await fetch(`${API_URL}/update-capital`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ person: capitalPerson, amount: -finalAmount })
+        body: JSON.stringify({ person: withdrawingPartner?.name, amount: -finalAmount })
       });
 
       if (!response.ok) throw new Error('Failed to update capital');
@@ -517,55 +596,44 @@ function App() {
       // Calculate new portfolio after withdrawal
       const newPortfolio = Math.max(0, currentPortfolio - finalAmount);
       
-      const newNickCapital = Math.max(0, capitalPerson === 'nick' ? nickCapital - finalAmount : nickCapital);
-      const newJoeyCapital = Math.max(0, capitalPerson === 'joey' ? joeyCapital - finalAmount : joeyCapital);
+      // Calculate new values and ownership for all partners
+      const partnersData = [];
       
-      // Calculate ownership and values
-      let nickOwnership, joeyOwnership, nickValue, joeyValue;
+      partners.forEach(partner => {
+        const currentPartnerStats = currentStats.partners.find(p => p.id === partner.id);
+        const newCapital = partner.id === selectedPartnerId 
+          ? Math.max(0, partner.total_invested - finalAmount) 
+          : partner.total_invested;
+        const newValue = partner.id === selectedPartnerId 
+          ? Math.max(0, currentPartnerStats.value - finalAmount) 
+          : currentPartnerStats.value;
+        const newOwnership = newPortfolio > 0.01 ? (newValue / newPortfolio) * 100 : 0;
+        const newPL = newValue - newCapital;
+        
+        partnersData.push({
+          partner_id: partner.id,
+          capital: newCapital,
+          ownership: newOwnership,
+          value: newValue,
+          pl: newPL
+        });
+      });
       
-      if (newPortfolio <= 0.01) {
-        // Portfolio effectively empty
-        nickOwnership = 50;
-        joeyOwnership = 50;
-        nickValue = 0;
-        joeyValue = 0;
-      } else {
-        if (capitalPerson === 'nick') {
-          // Nick is withdrawing
-          nickValue = Math.max(0, currentStats.nickValue - finalAmount);
-          joeyValue = currentStats.joeyValue;
-        } else {
-          // Joey is withdrawing
-          joeyValue = Math.max(0, currentStats.joeyValue - finalAmount);
-          nickValue = currentStats.nickValue;
-        }
-        
-        // Calculate ownership percentages
-        nickOwnership = (nickValue / newPortfolio) * 100;
-        joeyOwnership = (joeyValue / newPortfolio) * 100;
-        
-        // Normalize to 100%
-        const ownershipSum = nickOwnership + joeyOwnership;
-        if (ownershipSum > 0 && Math.abs(ownershipSum - 100) > 0.001) {
-          nickOwnership = (nickOwnership / ownershipSum) * 100;
-          joeyOwnership = (joeyOwnership / ownershipSum) * 100;
-        }
+      // Normalize ownership to 100%
+      const ownershipSum = partnersData.reduce((sum, p) => sum + p.ownership, 0);
+      if (ownershipSum > 0 && Math.abs(ownershipSum - 100) > 0.001) {
+        partnersData.forEach(p => {
+          p.ownership = (p.ownership / ownershipSum) * 100;
+        });
       }
 
       const entryData = {
         entry_type: 'withdrawal',
         portfolio_value: newPortfolio,
-        capital_person: capitalPerson,
+        capital_person: withdrawingPartner?.name || null,
         capital_amount: -finalAmount,
-        nick_capital: newNickCapital,
-        joey_capital: newJoeyCapital,
-        nick_ownership: nickOwnership,
-        joey_ownership: joeyOwnership,
-        nick_value: nickValue,
-        joey_value: joeyValue,
-        nick_pl: nickValue - newNickCapital,
-        joey_pl: joeyValue - newJoeyCapital,
-        notes: `${capitalPerson === 'nick' ? 'Nick' : 'Joey'} withdrew ${formatCurrency(finalAmount)}`
+        partners: partnersData,
+        notes: `${withdrawingPartner?.display_name || 'Partner'} withdrew ${formatCurrency(finalAmount)}`
       };
 
       await fetch(`${API_URL}/add-entry`, {
@@ -1116,6 +1184,7 @@ function App() {
     const trades = filteredEntries.filter(e => e.entry_type === 'trade' && e.daily_pl);
     const winningTrades = trades.filter(t => parseFloat(t.daily_pl) > 0);
     const losingTrades = trades.filter(t => parseFloat(t.daily_pl) < 0);
+    const breakevenTrades = trades.filter(t => parseFloat(t.daily_pl) === 0);
     
     const totalPL = trades.reduce((sum, t) => sum + parseFloat(t.daily_pl || 0), 0);
     const avgWin = winningTrades.length > 0 
@@ -1129,7 +1198,9 @@ function App() {
       totalTrades: trades.length,
       winningTrades: winningTrades.length,
       losingTrades: losingTrades.length,
+      breakevenTrades: breakevenTrades.length,
       winRate: trades.length > 0 ? (winningTrades.length / trades.length) * 100 : 0,
+      lossRate: trades.length > 0 ? (losingTrades.length / trades.length) * 100 : 0,
       totalPL,
       avgWin,
       avgLoss,
@@ -1809,8 +1880,14 @@ function App() {
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-slate-400 text-sm font-bold">Losing Trades</span>
-                            <span className="text-red-400 font-black">{metrics.losingTrades} ({formatPercent(100 - metrics.winRate)})</span>
+                            <span className="text-red-400 font-black">{metrics.losingTrades} ({formatPercent(metrics.lossRate)})</span>
                           </div>
+                          {metrics.breakevenTrades > 0 && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-400 text-sm font-bold">Breakeven Trades</span>
+                              <span className="text-slate-400 font-black">{metrics.breakevenTrades} ({formatPercent((metrics.breakevenTrades / metrics.totalTrades) * 100)})</span>
+                            </div>
+                          )}
                           <div className="pt-3 border-t-2 border-slate-700">
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-slate-400 text-sm font-bold">Average Win</span>
@@ -1982,28 +2059,18 @@ function App() {
                   <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2 sm:mb-3">
                     Who is investing?
                   </label>
-                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                    <button
-                      onClick={() => setCapitalPerson('nick')}
-                      className={`py-3 sm:py-4 font-black transition-all border-2 text-sm sm:text-base ${
-                        capitalPerson === 'nick'
-                          ? 'bg-red-600 text-white border-red-700'
-                          : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
-                      }`}
-                    >
-                      NICK
-                    </button>
-                    <button
-                      onClick={() => setCapitalPerson('joey')}
-                      className={`py-4 font-black transition-all border-2 ${
-                        capitalPerson === 'joey'
-                          ? 'bg-cyan-600 text-white border-cyan-700'
-                          : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
-                      }`}
-                    >
-                      JOEY
-                    </button>
-                  </div>
+                  <select
+                    value={selectedPartnerId || ''}
+                    onChange={(e) => setSelectedPartnerId(parseInt(e.target.value))}
+                    className="w-full px-4 py-3 sm:py-4 bg-slate-50 border-2 border-slate-300 text-slate-900 font-bold focus:outline-none focus:ring-0 focus:border-blue-600"
+                  >
+                    <option value="">Select Partner</option>
+                    {partners.map(partner => (
+                      <option key={partner.id} value={partner.id}>
+                        {partner.display_name} ({formatCurrency(partner.total_invested)} invested)
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -2051,28 +2118,21 @@ function App() {
                   <label className="block text-sm font-medium text-slate-300 mb-2">
                     Who is withdrawing?
                   </label>
-                  <div className="flex gap-4">
-                    <button
-                      onClick={() => setCapitalPerson('nick')}
-                      className={`flex-1 py-3 rounded-lg font-medium transition-all ${
-                        capitalPerson === 'nick'
-                          ? 'bg-red-600 text-white'
-                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                      }`}
-                    >
-                      Nick ({formatCurrency(calculateStats(getLatestPortfolio()).nickValue)})
-                    </button>
-                    <button
-                      onClick={() => setCapitalPerson('joey')}
-                      className={`flex-1 py-3 rounded-lg font-medium transition-all ${
-                        capitalPerson === 'joey'
-                          ? 'bg-cyan-600 text-white'
-                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                      }`}
-                    >
-                      Joey ({formatCurrency(calculateStats(getLatestPortfolio()).joeyValue)})
-                    </button>
-                  </div>
+                  <select
+                    value={selectedPartnerId || ''}
+                    onChange={(e) => setSelectedPartnerId(parseInt(e.target.value))}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    <option value="">Select Partner</option>
+                    {partners.map(partner => {
+                      const partnerStats = currentStats.partners.find(p => p.id === partner.id);
+                      return (
+                        <option key={partner.id} value={partner.id}>
+                          {partner.display_name} ({formatCurrency(partnerStats?.value || 0)} available)
+                        </option>
+                      );
+                    })}
+                  </select>
                 </div>
 
                 <div>
@@ -2087,13 +2147,13 @@ function App() {
                     className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                     placeholder="0.00"
                   />
-                  <div className="text-xs text-slate-400 mt-2">
-                    Maximum: {formatCurrency(
-                      capitalPerson === 'nick' 
-                        ? calculateStats(getLatestPortfolio()).nickValue 
-                        : calculateStats(getLatestPortfolio()).joeyValue
-                    )}
-                  </div>
+                  {selectedPartnerId && (
+                    <div className="text-xs text-slate-400 mt-2">
+                      Maximum: {formatCurrency(
+                        currentStats.partners.find(p => p.id === selectedPartnerId)?.value || 0
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3">

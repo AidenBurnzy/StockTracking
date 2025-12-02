@@ -12,6 +12,7 @@ export async function handler(event) {
     const sql = neon(process.env.DATABASE_URL);
     const { id } = JSON.parse(event.body);
 
+    // Delete entry (entry_partner_snapshots will cascade due to ON DELETE CASCADE)
     await sql`
       DELETE FROM entries 
       WHERE id = ${id}
