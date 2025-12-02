@@ -33,6 +33,15 @@ function App() {
   const [showDepositHistory, setShowDepositHistory] = useState(false);
   const [depositHistoryPerson, setDepositHistoryPerson] = useState(null);
   const [deleteMode, setDeleteMode] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [adminNickCapital, setAdminNickCapital] = useState('');
+  const [adminJoeyCapital, setAdminJoeyCapital] = useState('');
+  const [adminPortfolio, setAdminPortfolio] = useState('');
+  const [adminNickValue, setAdminNickValue] = useState('');
+  const [adminJoeyValue, setAdminJoeyValue] = useState('');
+  const [adminNickOwnership, setAdminNickOwnership] = useState('');
+  const [adminJoeyOwnership, setAdminJoeyOwnership] = useState('');
+  const [adjustmentMode, setAdjustmentMode] = useState('recalculate'); // 'recalculate' or 'independent'
 
   // API base URL - works for both Netlify and Vercel
   const API_URL = typeof window !== 'undefined' && window.location.hostname.includes('vercel')
@@ -316,7 +325,7 @@ function App() {
   };
 
   const deleteEntry = async (id) => {
-    if (!confirm('Delete this entry? This cannot be undone.')) return;
+    if (!confirm('Delete this entry? All values will be restored to the previous entry state.')) return;
 
     try {
       setLoading(true);
@@ -324,12 +333,17 @@ function App() {
       // Find the entry being deleted
       const entryToDelete = entries.find(e => e.id === id);
       
-      // If it's a capital entry, reverse the capital addition
-      if (entryToDelete && entryToDelete.entry_type === 'capital' && entryToDelete.capital_person && entryToDelete.capital_amount) {
+      if (!entryToDelete) {
+        throw new Error('Entry not found');
+      }
+      
+      // If it's a capital or withdrawal entry, reverse the capital change
+      if ((entryToDelete.entry_type === 'capital' || entryToDelete.entry_type === 'withdrawal') && 
+          entryToDelete.capital_person && entryToDelete.capital_amount) {
         const amount = parseFloat(entryToDelete.capital_amount);
         const person = entryToDelete.capital_person;
         
-        // Reverse the capital (negative amount)
+        // Reverse the capital change
         await fetch(`${API_URL}/update-capital`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -347,7 +361,7 @@ function App() {
       if (!response.ok) throw new Error('Failed to delete entry');
       
       await loadData();
-      setSelectedEntries(new Set()); // Clear selection after delete
+      setSelectedEntries(new Set());
     } catch (err) {
       console.error('Error deleting entry:', err);
       alert('Failed to delete entry: ' + err.message);
@@ -380,15 +394,16 @@ function App() {
       return;
     }
 
-    if (!confirm(`Delete ${selectedEntries.size} selected entries? This cannot be undone.`)) return;
+    if (!confirm(`Delete ${selectedEntries.size} selected entries? All capital changes will be reversed.`)) return;
 
     try {
       setLoading(true);
       
-      // First, reverse any capital entries
+      // First, reverse any capital/withdrawal entries
       const entriesToDelete = entries.filter(e => selectedEntries.has(e.id));
       const capitalReversals = entriesToDelete
-        .filter(e => e.entry_type === 'capital' && e.capital_person && e.capital_amount)
+        .filter(e => (e.entry_type === 'capital' || e.entry_type === 'withdrawal') && 
+                     e.capital_person && e.capital_amount)
         .map(e => ({
           person: e.capital_person,
           amount: -parseFloat(e.capital_amount)
@@ -827,6 +842,202 @@ function App() {
     setShowDepositHistory(true);
   };
 
+  const openAdminPanel = () => {
+    const currentPortfolio = getLatestPortfolio();
+    setAdminPortfolio(currentPortfolio.toString());
+    setAdminNickCapital(nickCapital.toString());
+    setAdminJoeyCapital(joeyCapital.toString());
+    setAdminNickValue(currentStats.nickValue.toFixed(2));
+    setAdminJoeyValue(currentStats.joeyValue.toFixed(2));
+    setAdminNickOwnership(currentStats.nickOwnership.toFixed(2));
+    setAdminJoeyOwnership(currentStats.joeyOwnership.toFixed(2));
+    setShowAdminPanel(true);
+  };
+
+  const applyAdminChanges = async () => {
+    const portfolio = parseFloat(adminPortfolio);
+    const nickCap = parseFloat(adminNickCapital);
+    const joeCap = parseFloat(adminJoeyCapital);
+    const nickVal = parseFloat(adminNickValue);
+    const joeVal = parseFloat(adminJoeyValue);
+    const nickOwn = parseFloat(adminNickOwnership);
+    const joeOwn = parseFloat(adminJoeyOwnership);
+
+    // Validation
+    if (isNaN(portfolio) || portfolio < 0) {
+      alert('Invalid portfolio value');
+      return;
+    }
+    if (isNaN(nickCap) || nickCap < 0 || isNaN(joeCap) || joeCap < 0) {
+      alert('Invalid capital values');
+      return;
+    }
+    if (isNaN(nickVal) || nickVal < 0 || isNaN(joeVal) || joeVal < 0) {
+      alert('Invalid current values');
+      return;
+    }
+    if (isNaN(nickOwn) || isNaN(joeOwn)) {
+      alert('Invalid ownership percentages');
+      return;
+    }
+
+    // Check if values make sense
+    if (adjustmentMode === 'independent') {
+      // In independent mode, just warn if things don't add up
+      if (Math.abs(nickVal + joeVal - portfolio) > 0.01) {
+        if (!confirm(`Warning: Nick value + Joey value (${formatCurrency(nickVal + joeVal)}) doesn't equal portfolio (${formatCurrency(portfolio)}). Continue anyway?`)) {
+          return;
+        }
+      }
+      if (Math.abs(nickOwn + joeOwn - 100) > 0.1) {
+        if (!confirm(`Warning: Ownership percentages don't add to 100% (${(nickOwn + joeOwn).toFixed(2)}%). Continue anyway?`)) {
+          return;
+        }
+      }
+    } else {
+      // Recalculate mode - ensure consistency
+      const totalOwnership = nickOwn + joeOwn;
+      if (totalOwnership === 0) {
+        alert('Ownership percentages cannot both be zero');
+        return;
+      }
+    }
+
+    try {
+      setLoading(true);
+
+      // Update capital values in database
+      await fetch(`${API_URL}/update-capital`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ person: 'nick', amount: nickCap - nickCapital })
+      });
+
+      await fetch(`${API_URL}/update-capital`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ person: 'joey', amount: joeCap - joeyCapital })
+      });
+
+      let finalNickVal, finalJoeVal, finalNickOwn, finalJoeOwn;
+
+      if (adjustmentMode === 'recalculate') {
+        // Normalize ownership to 100%
+        const totalOwn = nickOwn + joeOwn;
+        finalNickOwn = (nickOwn / totalOwn) * 100;
+        finalJoeOwn = (joeOwn / totalOwn) * 100;
+
+        // Recalculate values based on ownership
+        finalNickVal = (portfolio * finalNickOwn) / 100;
+        finalJoeVal = (portfolio * finalJoeOwn) / 100;
+      } else {
+        // Use exact values entered
+        finalNickVal = nickVal;
+        finalJoeVal = joeVal;
+        finalNickOwn = nickOwn;
+        finalJoeOwn = joeOwn;
+      }
+
+      // Create a correction entry
+      const entryData = {
+        entry_type: 'trade',
+        portfolio_value: portfolio,
+        ticker: null,
+        trade_type: null,
+        contracts: null,
+        notes: `Admin adjustment (${adjustmentMode} mode)`,
+        daily_pl: 0,
+        nick_capital: nickCap,
+        joey_capital: joeCap,
+        nick_ownership: finalNickOwn,
+        joey_ownership: finalJoeOwn,
+        nick_value: finalNickVal,
+        joey_value: finalJoeVal,
+        nick_pl: finalNickVal - nickCap,
+        joey_pl: finalJoeVal - joeCap
+      };
+
+      await fetch(`${API_URL}/add-entry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entryData)
+      });
+
+      await loadData();
+      setShowAdminPanel(false);
+      alert('Values updated successfully');
+    } catch (err) {
+      console.error('Error applying admin changes:', err);
+      alert('Failed to apply changes: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const restoreToHistoryPoint = async (entry) => {
+    if (!confirm(`Restore all values to this point in history (${formatDate(entry.entry_date)})? This will create a new entry with these exact values.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Calculate capital differences
+      const nickCapDiff = parseFloat(entry.nick_capital) - nickCapital;
+      const joeCapDiff = parseFloat(entry.joey_capital) - joeyCapital;
+
+      // Update capital if needed
+      if (Math.abs(nickCapDiff) > 0.01) {
+        await fetch(`${API_URL}/update-capital`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ person: 'nick', amount: nickCapDiff })
+        });
+      }
+
+      if (Math.abs(joeCapDiff) > 0.01) {
+        await fetch(`${API_URL}/update-capital`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ person: 'joey', amount: joeCapDiff })
+        });
+      }
+
+      // Create new entry with restored values
+      const entryData = {
+        entry_type: 'trade',
+        portfolio_value: parseFloat(entry.portfolio_value),
+        ticker: null,
+        trade_type: null,
+        contracts: null,
+        notes: `Restored to ${formatDate(entry.entry_date)}`,
+        daily_pl: 0,
+        nick_capital: parseFloat(entry.nick_capital),
+        joey_capital: parseFloat(entry.joey_capital),
+        nick_ownership: parseFloat(entry.nick_ownership),
+        joey_ownership: parseFloat(entry.joey_ownership),
+        nick_value: parseFloat(entry.nick_value),
+        joey_value: parseFloat(entry.joey_value),
+        nick_pl: parseFloat(entry.nick_pl),
+        joey_pl: parseFloat(entry.joey_pl)
+      };
+
+      await fetch(`${API_URL}/add-entry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entryData)
+      });
+
+      await loadData();
+      alert('Successfully restored to history point');
+    } catch (err) {
+      console.error('Error restoring to history point:', err);
+      alert('Failed to restore: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatCurrency = (num) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -1060,6 +1271,14 @@ function App() {
           >
             <MinusCircle className="w-5 h-5" />
             Withdraw Capital
+          </button>
+          <button
+            onClick={openAdminPanel}
+            disabled={loading}
+            className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-8 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2 disabled:opacity-50"
+          >
+            <Edit2 className="w-5 h-5" />
+            Admin Panel
           </button>
         </div>
 
@@ -1510,6 +1729,191 @@ function App() {
           </div>
         )}
 
+        {/* Admin Panel Modal */}
+        {showAdminPanel && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-800 rounded-2xl p-8 max-w-2xl w-full border border-yellow-600 max-h-[90vh] overflow-y-auto">
+              <h3 className="text-2xl font-bold text-yellow-400 mb-2">⚙️ Admin Panel</h3>
+              <p className="text-slate-300 text-sm mb-6">Manually adjust all system values. Use with caution!</p>
+              
+              <div className="space-y-6">
+                {/* Adjustment Mode Selection */}
+                <div className="bg-yellow-900/20 border border-yellow-600 rounded-lg p-4">
+                  <label className="block text-sm font-medium text-yellow-300 mb-3">
+                    Adjustment Mode
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        value="recalculate"
+                        checked={adjustmentMode === 'recalculate'}
+                        onChange={(e) => setAdjustmentMode(e.target.value)}
+                        className="mt-1"
+                      />
+                      <div>
+                        <div className="text-white font-medium">Recalculate (Recommended)</div>
+                        <div className="text-slate-400 text-xs">Values will be recalculated based on ownership percentages. Ownership will be normalized to 100%.</div>
+                      </div>
+                    </label>
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        value="independent"
+                        checked={adjustmentMode === 'independent'}
+                        onChange={(e) => setAdjustmentMode(e.target.value)}
+                        className="mt-1"
+                      />
+                      <div>
+                        <div className="text-white font-medium">Independent (Advanced)</div>
+                        <div className="text-slate-400 text-xs">All values will be set exactly as entered, even if they don't add up correctly.</div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Capital Values */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-red-300 mb-2">
+                      Nick's Total Invested
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={adminNickCapital}
+                      onChange={(e) => setAdminNickCapital(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-700 border border-red-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-cyan-300 mb-2">
+                      Joey's Total Invested
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={adminJoeyCapital}
+                      onChange={(e) => setAdminJoeyCapital(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-700 border border-cyan-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Portfolio Value */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Portfolio Total
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={adminPortfolio}
+                    onChange={(e) => setAdminPortfolio(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Current Values */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-red-300 mb-2">
+                      Nick's Current Value
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={adminNickValue}
+                      onChange={(e) => setAdminNickValue(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-700 border border-red-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      disabled={adjustmentMode === 'recalculate'}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-cyan-300 mb-2">
+                      Joey's Current Value
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={adminJoeyValue}
+                      onChange={(e) => setAdminJoeyValue(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-700 border border-cyan-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      disabled={adjustmentMode === 'recalculate'}
+                    />
+                  </div>
+                </div>
+
+                {/* Ownership Percentages */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-red-300 mb-2">
+                      Nick's Ownership %
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={adminNickOwnership}
+                      onChange={(e) => setAdminNickOwnership(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-700 border border-red-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-cyan-300 mb-2">
+                      Joey's Ownership %
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={adminJoeyOwnership}
+                      onChange={(e) => setAdminJoeyOwnership(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-700 border border-cyan-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Summary */}
+                <div className="bg-slate-700/50 rounded-lg p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Sum of Values:</span>
+                    <span className={`font-medium ${
+                      Math.abs((parseFloat(adminNickValue) || 0) + (parseFloat(adminJoeyValue) || 0) - (parseFloat(adminPortfolio) || 0)) < 0.01
+                        ? 'text-green-400' : 'text-yellow-400'
+                    }`}>
+                      {formatCurrency((parseFloat(adminNickValue) || 0) + (parseFloat(adminJoeyValue) || 0))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Sum of Ownership:</span>
+                    <span className={`font-medium ${
+                      Math.abs((parseFloat(adminNickOwnership) || 0) + (parseFloat(adminJoeyOwnership) || 0) - 100) < 0.1
+                        ? 'text-green-400' : 'text-yellow-400'
+                    }`}>
+                      {((parseFloat(adminNickOwnership) || 0) + (parseFloat(adminJoeyOwnership) || 0)).toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => setShowAdminPanel(false)}
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-lg transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={applyAdminChanges}
+                    disabled={loading}
+                    className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 rounded-lg transition-all disabled:opacity-50"
+                  >
+                    Apply Changes
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Deposit History Modal */}
         {showDepositHistory && depositHistoryPerson && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -1794,6 +2198,14 @@ function App() {
                     </div>
                     {!deleteMode && (
                       <div className="flex gap-2 ml-4">
+                        <button
+                          onClick={() => restoreToHistoryPoint(entry)}
+                          disabled={loading}
+                          className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/30 p-2 rounded-lg transition-all disabled:opacity-50"
+                          title="Restore to this point"
+                        >
+                          <History className="w-5 h-5" />
+                        </button>
                         {entry.entry_type === 'trade' && (
                           <button
                             onClick={() => openEditEntry(entry)}
