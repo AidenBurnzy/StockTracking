@@ -751,8 +751,8 @@ function App() {
     setAdminPortfolio(currentPortfolio.toFixed(2));
     setAdminNickValue(currentStats.nickValue.toFixed(2));
     setAdminJoeyValue(currentStats.joeyValue.toFixed(2));
-    setAdminNickCapital(currentStats.nickCapital.toFixed(2));
-    setAdminJoeyCapital(currentStats.joeyCapital.toFixed(2));
+    setAdminNickCapital(nickCapital.toFixed(2));
+    setAdminJoeyCapital(joeyCapital.toFixed(2));
     setAdminNickOwnership(currentStats.nickOwnership.toFixed(2));
     setAdminJoeyOwnership(currentStats.joeyOwnership.toFixed(2));
     setAdjustmentMode('recalculate');
@@ -881,18 +881,6 @@ function App() {
   const openDepositHistory = (person) => {
     setDepositHistoryPerson(person);
     setShowDepositHistory(true);
-  };
-
-  const openAdminPanel = () => {
-    const currentPortfolio = getLatestPortfolio();
-    setAdminPortfolio(currentPortfolio.toString());
-    setAdminNickCapital(nickCapital.toString());
-    setAdminJoeyCapital(joeyCapital.toString());
-    setAdminNickValue(currentStats.nickValue.toFixed(2));
-    setAdminJoeyValue(currentStats.joeyValue.toFixed(2));
-    setAdminNickOwnership(currentStats.nickOwnership.toFixed(2));
-    setAdminJoeyOwnership(currentStats.joeyOwnership.toFixed(2));
-    setShowAdminPanel(true);
   };
 
   const applyAdminChanges = async () => {
@@ -1201,78 +1189,83 @@ function App() {
     <div className="min-h-screen bg-slate-950">
       {/* Top Navigation Bar */}
       <div className="bg-slate-900 border-b-2 border-slate-700">
-        <div className="max-w-[1600px] mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-8">
+        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8">
               <div>
-                <h1 className="text-2xl font-black text-white uppercase tracking-tight">Portfolio Manager</h1>
+                <h1 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">Portfolio Manager</h1>
                 <p className="text-xs text-slate-400 font-medium">Joint Investment Account</p>
               </div>
               
               {/* Tab Navigation */}
-              <nav className="flex gap-2">
+              <nav className="flex gap-1 sm:gap-2 overflow-x-auto pb-1 sm:pb-0">
                 <button
                   onClick={() => setActiveTab('dashboard')}
-                  className={`px-6 py-2 font-black text-sm uppercase tracking-wide transition-all ${
+                  className={`flex-shrink-0 px-3 sm:px-6 py-2 font-black text-xs sm:text-sm uppercase tracking-wide transition-all ${
                     activeTab === 'dashboard'
                       ? 'bg-blue-600 text-white border-2 border-blue-500'
                       : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
                   }`}
                 >
-                  <BarChart3 className="w-4 h-4 inline mr-2" />
-                  Dashboard
+                  <BarChart3 className="w-4 h-4 inline mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Dashboard</span>
+                  <span className="sm:hidden">Dash</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('transactions')}
-                  className={`px-6 py-2 font-black text-sm uppercase tracking-wide transition-all ${
+                  className={`flex-shrink-0 px-3 sm:px-6 py-2 font-black text-xs sm:text-sm uppercase tracking-wide transition-all ${
                     activeTab === 'transactions'
                       ? 'bg-blue-600 text-white border-2 border-blue-500'
                       : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
                   }`}
                 >
-                  <History className="w-4 h-4 inline mr-2" />
-                  Transactions
+                  <History className="w-4 h-4 inline mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Transactions</span>
+                  <span className="sm:hidden">Trans</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('analytics')}
-                  className={`px-6 py-2 font-black text-sm uppercase tracking-wide transition-all ${
+                  className={`flex-shrink-0 px-3 sm:px-6 py-2 font-black text-xs sm:text-sm uppercase tracking-wide transition-all ${
                     activeTab === 'analytics'
                       ? 'bg-blue-600 text-white border-2 border-blue-500'
                       : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
                   }`}
                 >
-                  <PieChart className="w-4 h-4 inline mr-2" />
-                  Analytics
+                  <PieChart className="w-4 h-4 inline mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Analytics</span>
+                  <span className="sm:hidden">Stats</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('settings')}
-                  className={`px-6 py-2 font-black text-sm uppercase tracking-wide transition-all ${
+                  className={`flex-shrink-0 px-3 sm:px-6 py-2 font-black text-xs sm:text-sm uppercase tracking-wide transition-all ${
                     activeTab === 'settings'
                       ? 'bg-blue-600 text-white border-2 border-blue-500'
                       : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
                   }`}
                 >
-                  <Settings className="w-4 h-4 inline mr-2" />
-                  Settings
+                  <Settings className="w-4 h-4 inline mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Settings</span>
+                  <span className="sm:hidden">Set</span>
                 </button>
               </nav>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-0">
               <button
                 onClick={loadData}
                 disabled={loading}
                 className="p-2 bg-slate-800 hover:bg-slate-700 border-2 border-slate-700 text-slate-300 transition-colors disabled:opacity-50"
                 title="Refresh"
               >
-                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${loading ? 'animate-spin' : ''}`} />
               </button>
               <button
                 onClick={() => getQuickAction('deposit')}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-black text-sm border-2 border-green-500 flex items-center gap-2"
+                className="px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-black text-xs sm:text-sm border-2 border-green-500 flex items-center gap-1 sm:gap-2"
               >
                 <Plus className="w-4 h-4" />
-                QUICK ADD
+                <span className="hidden sm:inline">QUICK ADD</span>
+                <span className="sm:hidden">ADD</span>
               </button>
             </div>
           </div>
@@ -1280,110 +1273,110 @@ function App() {
       </div>
 
       {/* Main Content Area */}
-      <div className="max-w-[1600px] mx-auto p-6">
+      <div className="max-w-[1600px] mx-auto p-3 sm:p-6">
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
             {/* Key Metrics Row */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 border-2 border-blue-500">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-4 sm:p-6 border-2 border-blue-500">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-blue-100 text-xs font-black uppercase tracking-wider">Portfolio Value</span>
                   <DollarSign className="w-5 h-5 text-blue-200" />
                 </div>
-                <div className="text-3xl font-black text-white">
+                <div className="text-2xl sm:text-3xl font-black text-white">
                   {formatCurrency(getLatestPortfolio())}
                 </div>
-                <div className={`text-sm font-bold mt-2 ${currentStats.totalPL >= 0 ? 'text-green-200' : 'text-red-200'}`}>
+                <div className={`text-xs sm:text-sm font-bold mt-2 ${currentStats.totalPL >= 0 ? 'text-green-200' : 'text-red-200'}`}>
                   {currentStats.totalPL >= 0 ? '+' : ''}{formatCurrency(currentStats.totalPL)} ({formatPercent((currentStats.totalPL / currentStats.totalCapital) * 100)})
                 </div>
               </div>
 
-              <div className="bg-slate-800 p-6 border-2 border-slate-700">
+              <div className="bg-slate-800 p-4 sm:p-6 border-2 border-slate-700">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-slate-400 text-xs font-black uppercase tracking-wider">Total Invested</span>
                   <PiggyBank className="w-5 h-5 text-slate-500" />
                 </div>
-                <div className="text-3xl font-black text-white">
+                <div className="text-2xl sm:text-3xl font-black text-white">
                   {formatCurrency(currentStats.totalCapital)}
                 </div>
-                <div className="text-sm font-bold text-slate-400 mt-2">
+                <div className="text-xs sm:text-sm font-bold text-slate-400 mt-2">
                   Combined Capital
                 </div>
               </div>
 
-              <div className="bg-slate-800 p-6 border-2 border-slate-700">
+              <div className="bg-slate-800 p-4 sm:p-6 border-2 border-slate-700">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-slate-400 text-xs font-black uppercase tracking-wider">Nick's Share</span>
                   <TrendingUp className="w-5 h-5 text-red-500" />
                 </div>
-                <div className="text-3xl font-black text-white">
+                <div className="text-2xl sm:text-3xl font-black text-white">
                   {formatPercent(currentStats.nickOwnership)}
                 </div>
-                <div className="text-sm font-bold text-red-400 mt-2">
+                <div className="text-xs sm:text-sm font-bold text-red-400 mt-2">
                   {formatCurrency(currentStats.nickValue)}
                 </div>
               </div>
 
-              <div className="bg-slate-800 p-6 border-2 border-slate-700">
+              <div className="bg-slate-800 p-4 sm:p-6 border-2 border-slate-700">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-slate-400 text-xs font-black uppercase tracking-wider">Joey's Share</span>
                   <TrendingUp className="w-5 h-5 text-cyan-500" />
                 </div>
-                <div className="text-3xl font-black text-white">
+                <div className="text-2xl sm:text-3xl font-black text-white">
                   {formatPercent(currentStats.joeyOwnership)}
                 </div>
-                <div className="text-sm font-bold text-cyan-400 mt-2">
+                <div className="text-xs sm:text-sm font-bold text-cyan-400 mt-2">
                   {formatCurrency(currentStats.joeyValue)}
                 </div>
               </div>
             </div>
 
             {/* Partner Cards Row */}
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
               {/* Nick's Card */}
-              <div className="bg-slate-800 border-l-8 border-red-600 p-6">
-                <div className="flex items-center justify-between mb-6">
+              <div className="bg-slate-800 border-l-4 sm:border-l-8 border-red-600 p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
                   <div>
-                    <h3 className="text-2xl font-black text-white uppercase">Nick</h3>
-                    <p className="text-sm text-slate-400 font-bold">Partner 1</p>
+                    <h3 className="text-xl sm:text-2xl font-black text-white uppercase">Nick</h3>
+                    <p className="text-xs sm:text-sm text-slate-400 font-bold">Partner 1</p>
                   </div>
-                  <div className="w-16 h-16 bg-red-600 flex items-center justify-center text-white font-black text-2xl border-2 border-red-500">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-red-600 flex items-center justify-center text-white font-black text-xl sm:text-2xl border-2 border-red-500">
                     N
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <div className="text-xs text-slate-500 font-black uppercase mb-1">Invested</div>
-                    <div className="text-xl font-black text-white">{formatCurrency(nickCapital)}</div>
+                    <div className="text-lg sm:text-xl font-black text-white">{formatCurrency(nickCapital)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500 font-black uppercase mb-1">Current Value</div>
-                    <div className="text-xl font-black text-white">{formatCurrency(currentStats.nickValue)}</div>
+                    <div className="text-lg sm:text-xl font-black text-white">{formatCurrency(currentStats.nickValue)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500 font-black uppercase mb-1">Ownership</div>
-                    <div className="text-xl font-black text-red-400">{formatPercent(currentStats.nickOwnership)}</div>
+                    <div className="text-lg sm:text-xl font-black text-red-400">{formatPercent(currentStats.nickOwnership)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500 font-black uppercase mb-1">P/L</div>
-                    <div className={`text-xl font-black ${currentStats.nickPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <div className={`text-lg sm:text-xl font-black ${currentStats.nickPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {formatCurrency(currentStats.nickPL)}
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t-2 border-slate-700 flex gap-3">
+                <div className="mt-4 sm:mt-6 pt-4 border-t-2 border-slate-700 flex gap-2 sm:gap-3">
                   <button
                     onClick={() => { setCapitalPerson('nick'); getQuickAction('deposit'); }}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black py-3 text-sm border-2 border-red-500"
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black py-2 sm:py-3 text-xs sm:text-sm border-2 border-red-500"
                   >
                     <Plus className="w-4 h-4 inline mr-1" />
                     DEPOSIT
                   </button>
                   <button
                     onClick={() => { setCapitalPerson('nick'); getQuickAction('withdraw'); }}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-black py-3 text-sm border-2 border-slate-600"
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-black py-2 sm:py-3 text-xs sm:text-sm border-2 border-slate-600"
                   >
                     <MinusCircle className="w-4 h-4 inline mr-1" />
                     WITHDRAW
@@ -1392,49 +1385,49 @@ function App() {
               </div>
 
               {/* Joey's Card */}
-              <div className="bg-slate-800 border-l-8 border-cyan-600 p-6">
-                <div className="flex items-center justify-between mb-6">
+              <div className="bg-slate-800 border-l-4 sm:border-l-8 border-cyan-600 p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
                   <div>
-                    <h3 className="text-2xl font-black text-white uppercase">Joey</h3>
-                    <p className="text-sm text-slate-400 font-bold">Partner 2</p>
+                    <h3 className="text-xl sm:text-2xl font-black text-white uppercase">Joey</h3>
+                    <p className="text-xs sm:text-sm text-slate-400 font-bold">Partner 2</p>
                   </div>
-                  <div className="w-16 h-16 bg-cyan-600 flex items-center justify-center text-white font-black text-2xl border-2 border-cyan-500">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-cyan-600 flex items-center justify-center text-white font-black text-xl sm:text-2xl border-2 border-cyan-500">
                     J
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <div className="text-xs text-slate-500 font-black uppercase mb-1">Invested</div>
-                    <div className="text-xl font-black text-white">{formatCurrency(joeyCapital)}</div>
+                    <div className="text-lg sm:text-xl font-black text-white">{formatCurrency(joeyCapital)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500 font-black uppercase mb-1">Current Value</div>
-                    <div className="text-xl font-black text-white">{formatCurrency(currentStats.joeyValue)}</div>
+                    <div className="text-lg sm:text-xl font-black text-white">{formatCurrency(currentStats.joeyValue)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500 font-black uppercase mb-1">Ownership</div>
-                    <div className="text-xl font-black text-cyan-400">{formatPercent(currentStats.joeyOwnership)}</div>
+                    <div className="text-lg sm:text-xl font-black text-cyan-400">{formatPercent(currentStats.joeyOwnership)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500 font-black uppercase mb-1">P/L</div>
-                    <div className={`text-xl font-black ${currentStats.joeyPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <div className={`text-lg sm:text-xl font-black ${currentStats.joeyPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {formatCurrency(currentStats.joeyPL)}
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t-2 border-slate-700 flex gap-3">
+                <div className="mt-4 sm:mt-6 pt-4 border-t-2 border-slate-700 flex gap-2 sm:gap-3">
                   <button
                     onClick={() => { setCapitalPerson('joey'); getQuickAction('deposit'); }}
-                    className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white font-black py-3 text-sm border-2 border-cyan-500"
+                    className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white font-black py-2 sm:py-3 text-xs sm:text-sm border-2 border-cyan-500"
                   >
                     <Plus className="w-4 h-4 inline mr-1" />
                     DEPOSIT
                   </button>
                   <button
                     onClick={() => { setCapitalPerson('joey'); getQuickAction('withdraw'); }}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-black py-3 text-sm border-2 border-slate-600"
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-black py-2 sm:py-3 text-xs sm:text-sm border-2 border-slate-600"
                   >
                     <MinusCircle className="w-4 h-4 inline mr-1" />
                     WITHDRAW
@@ -1444,33 +1437,33 @@ function App() {
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-slate-800 border-2 border-slate-700 p-6">
-              <h3 className="text-lg font-black text-white uppercase mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-slate-800 border-2 border-slate-700 p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-black text-white uppercase mb-3 sm:mb-4">Quick Actions</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <button
                   onClick={() => getQuickAction('trade')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-black py-4 border-2 border-blue-500 flex flex-col items-center gap-2"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-black py-3 sm:py-4 border-2 border-blue-500 flex flex-col items-center gap-1 sm:gap-2"
                 >
-                  <DollarSign className="w-6 h-6" />
-                  <span className="text-sm">ADD TRADE</span>
+                  <DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span className="text-xs sm:text-sm">ADD TRADE</span>
                 </button>
                 <button
                   onClick={() => getQuickAction('adjustment')}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white font-black py-4 border-2 border-yellow-500 flex flex-col items-center gap-2"
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white font-black py-3 sm:py-4 border-2 border-yellow-500 flex flex-col items-center gap-1 sm:gap-2"
                 >
-                  <Edit2 className="w-6 h-6" />
-                  <span className="text-sm">ADJUST</span>
+                  <Edit2 className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span className="text-xs sm:text-sm">ADJUST</span>
                 </button>
                 <button
                   onClick={() => openEditValues()}
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-black py-4 border-2 border-purple-500 flex flex-col items-center gap-2"
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-black py-3 sm:py-4 border-2 border-purple-500 flex flex-col items-center gap-1 sm:gap-2"
                 >
-                  <Target className="w-6 h-6" />
-                  <span className="text-sm">REBALANCE</span>
+                  <Target className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span className="text-xs sm:text-sm">REBALANCE</span>
                 </button>
                 <button
                   onClick={() => setDeleteMode(!deleteMode)}
-                  className={`font-black py-4 border-2 flex flex-col items-center gap-2 ${
+                  className={`font-black py-3 sm:py-4 border-2 flex flex-col items-center gap-1 sm:gap-2 ${
                     deleteMode 
                       ? 'bg-red-600 hover:bg-red-700 text-white border-red-500'
                       : 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600'
@@ -1932,19 +1925,19 @@ function App() {
 
       {/* All Modals */}
       {showAddCapital && (
-          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div className="bg-white shadow-2xl p-8 max-w-md w-full border-t-8 border-blue-600">
-              <h3 className="text-3xl font-black text-slate-900 mb-6 uppercase tracking-tight">Add Capital</h3>
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-3 sm:p-4">
+            <div className="bg-white shadow-2xl p-5 sm:p-8 max-w-md w-full border-t-4 sm:border-t-8 border-blue-600 max-h-[90vh] overflow-y-auto">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mb-4 sm:mb-6 uppercase tracking-tight">Add Capital</h3>
               
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 <div>
-                  <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-3">
+                  <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2 sm:mb-3">
                     Who is investing?
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <button
                       onClick={() => setCapitalPerson('nick')}
-                      className={`py-4 font-black transition-all border-2 ${
+                      className={`py-3 sm:py-4 font-black transition-all border-2 text-sm sm:text-base ${
                         capitalPerson === 'nick'
                           ? 'bg-red-600 text-white border-red-700'
                           : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
