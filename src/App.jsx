@@ -1872,29 +1872,7 @@ function App() {
               </p>
             </div>
 
-            {/* Data Management */}
-            <div className="bg-slate-800 border-2 border-slate-700 p-6">
-              <h3 className="text-lg font-black text-white uppercase mb-4">Data Management</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                <button
-                  className="bg-slate-700 hover:bg-slate-600 text-white font-black py-4 border-2 border-slate-600 flex items-center justify-center gap-2"
-                  disabled
-                >
-                  <Download className="w-5 h-5" />
-                  EXPORT DATA
-                </button>
-                <button
-                  className="bg-slate-700 hover:bg-slate-600 text-white font-black py-4 border-2 border-slate-600 flex items-center justify-center gap-2"
-                  disabled
-                >
-                  <Upload className="w-5 h-5" />
-                  IMPORT DATA
-                </button>
-              </div>
-              <p className="text-slate-400 text-sm font-medium mt-3">
-                Export your portfolio data to CSV or import from a backup. (Coming soon)
-              </p>
-            </div>
+            {/* Data Management removed per request */}
 
             {/* System Info */}
             <div className="bg-slate-800 border-2 border-slate-700 p-6">
