@@ -80,21 +80,34 @@ function App() {
     // Get ownership percentages from the latest entry if it exists
     let nickOwnership, joeyOwnership;
     if (entries.length > 0) {
-      nickOwnership = parseFloat(entries[0].nick_ownership);
-      joeyOwnership = parseFloat(entries[0].joey_ownership);
+      nickOwnership = parseFloat(entries[0].nick_ownership) || 0;
+      joeyOwnership = parseFloat(entries[0].joey_ownership) || 0;
     } else {
       // No entries yet, calculate from capital
-      nickOwnership = totalCapital > 0 ? (nickCapital / totalCapital) * 100 : 100;
-      joeyOwnership = totalCapital > 0 ? (joeyCapital / totalCapital) * 100 : 0;
+      if (totalCapital > 0) {
+        nickOwnership = (nickCapital / totalCapital) * 100;
+        joeyOwnership = (joeyCapital / totalCapital) * 100;
+      } else {
+        // No capital invested yet - default to Nick 100%
+        nickOwnership = 100;
+        joeyOwnership = 0;
+      }
     }
 
-    // Always recalculate values based on current portfolio and ownership percentages
-    const nickValue = (portfolioNum * nickOwnership) / 100;
-    const joeyValue = (portfolioNum * joeyOwnership) / 100;
+    // Ensure ownership percentages are valid
+    const ownershipSum = nickOwnership + joeyOwnership;
+    if (ownershipSum > 0 && Math.abs(ownershipSum - 100) > 0.01) {
+      // Normalize to 100%
+      nickOwnership = (nickOwnership / ownershipSum) * 100;
+      joeyOwnership = (joeyOwnership / ownershipSum) * 100;
+    }
+
+    // Calculate values based on portfolio and ownership
+    const nickValue = portfolioNum > 0 ? (portfolioNum * nickOwnership) / 100 : 0;
+    const joeyValue = portfolioNum > 0 ? (portfolioNum * joeyOwnership) / 100 : 0;
 
     const nickPL = nickValue - nickCapital;
     const joeyPL = joeyValue - joeyCapital;
-
     const totalPL = portfolioNum - totalCapital;
 
     return {
@@ -117,21 +130,28 @@ function App() {
   const currentStats = calculateStats(getLatestPortfolio());
 
   const addDailyEntry = async () => {
-    if (!portfolioValue || parseFloat(portfolioValue) <= 0) {
-      alert('Please enter a valid portfolio value');
+    const portfolioVal = parseFloat(portfolioValue);
+    if (isNaN(portfolioVal) || portfolioVal < 0) {
+      alert('Please enter a valid portfolio value (must be 0 or greater)');
+      return;
+    }
+
+    // Prevent extremely large values
+    if (portfolioVal > 1000000000) {
+      alert('Portfolio value is too large');
       return;
     }
 
     try {
       setLoading(true);
       const previousValue = getLatestPortfolio();
-      const dailyPL = parseFloat(portfolioValue) - previousValue;
+      const dailyPL = portfolioVal - previousValue;
 
-      const stats = calculateStats(portfolioValue);
+      const stats = calculateStats(portfolioVal);
 
       const entryData = {
         entry_type: 'trade',
-        portfolio_value: parseFloat(portfolioValue),
+        portfolio_value: portfolioVal,
         ticker: ticker || null,
         trade_type: tradeType || null,
         contracts: contracts || null,
@@ -174,8 +194,14 @@ function App() {
 
   const addCapital = async () => {
     const amount = parseFloat(capitalAmount);
-    if (!amount || amount <= 0) {
-      alert('Please enter a valid amount');
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid positive amount');
+      return;
+    }
+
+    // Prevent extremely large amounts
+    if (amount > 1000000000) {
+      alert('Amount is too large');
       return;
     }
 
@@ -194,18 +220,13 @@ function App() {
       // Get current portfolio value at the time of investment
       const portfolioAtInvestment = getLatestPortfolio();
       
-      // Get current ownership and exact values from the latest entry (not from capital table)
-      let oldNickOwnership, oldJoeyOwnership, nickCurrentValue, joeyCurrentValue;
+      // Get current ownership and exact values from the latest entry
+      let nickCurrentValue, joeyCurrentValue;
       if (entries.length > 0) {
-        oldNickOwnership = parseFloat(entries[0].nick_ownership);
-        oldJoeyOwnership = parseFloat(entries[0].joey_ownership);
-        nickCurrentValue = parseFloat(entries[0].nick_value);
-        joeyCurrentValue = parseFloat(entries[0].joey_value);
+        nickCurrentValue = parseFloat(entries[0].nick_value) || 0;
+        joeyCurrentValue = parseFloat(entries[0].joey_value) || 0;
       } else {
-        // No entries yet, calculate from capital
-        const totalCapital = nickCapital + joeyCapital;
-        oldNickOwnership = totalCapital > 0 ? (nickCapital / totalCapital) * 100 : 100;
-        oldJoeyOwnership = totalCapital > 0 ? (joeyCapital / totalCapital) * 100 : 0;
+        // No entries yet - starting from zero
         nickCurrentValue = 0;
         joeyCurrentValue = 0;
       }
@@ -219,28 +240,44 @@ function App() {
       // Calculate ownership and values
       let nickOwnership, joeyOwnership, nickValue, joeyValue;
       
-      if (portfolioAtInvestment === 0) {
+      if (portfolioAtInvestment === 0 || (nickCurrentValue === 0 && joeyCurrentValue === 0)) {
         // First investment - whoever invests gets 100%
-        nickOwnership = capitalPerson === 'nick' ? 100 : 0;
-        joeyOwnership = capitalPerson === 'joey' ? 100 : 0;
-        nickValue = capitalPerson === 'nick' ? amount : 0;
-        joeyValue = capitalPerson === 'joey' ? amount : 0;
-      } else {
         if (capitalPerson === 'nick') {
-          // Nick adds capital - his value increases by the amount invested
+          nickValue = amount;
+          joeyValue = 0;
+          nickOwnership = 100;
+          joeyOwnership = 0;
+        } else {
+          nickValue = 0;
+          joeyValue = amount;
+          nickOwnership = 0;
+          joeyOwnership = 100;
+        }
+      } else {
+        // Subsequent investment - person's value increases, other stays same
+        if (capitalPerson === 'nick') {
           nickValue = nickCurrentValue + amount;
-          // Joey's value stays exactly the same
           joeyValue = joeyCurrentValue;
         } else {
-          // Joey adds capital - his value increases by the amount invested
           joeyValue = joeyCurrentValue + amount;
-          // Nick's value stays exactly the same
           nickValue = nickCurrentValue;
         }
         
-        // Recalculate ownership percentages based on new portfolio total
-        nickOwnership = (nickValue / newPortfolio) * 100;
-        joeyOwnership = (joeyValue / newPortfolio) * 100;
+        // Recalculate ownership percentages
+        if (newPortfolio > 0) {
+          nickOwnership = (nickValue / newPortfolio) * 100;
+          joeyOwnership = (joeyValue / newPortfolio) * 100;
+        } else {
+          nickOwnership = 50;
+          joeyOwnership = 50;
+        }
+      }
+      
+      // Ensure ownership sums to exactly 100%
+      const ownershipSum = nickOwnership + joeyOwnership;
+      if (Math.abs(ownershipSum - 100) > 0.001) {
+        nickOwnership = (nickOwnership / ownershipSum) * 100;
+        joeyOwnership = (joeyOwnership / ownershipSum) * 100;
       }
 
       const entryData = {
@@ -398,14 +435,14 @@ function App() {
 
   const withdrawCapital = async () => {
     const amount = parseFloat(capitalAmount);
-    if (!amount || amount <= 0) {
-      alert('Please enter a valid amount');
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid positive amount');
       return;
     }
 
     // Get current portfolio and calculate current values
     const currentPortfolio = getLatestPortfolio();
-    if (currentPortfolio === 0) {
+    if (currentPortfolio <= 0) {
       alert('No funds available to withdraw');
       return;
     }
@@ -413,10 +450,14 @@ function App() {
     const currentStats = calculateStats(currentPortfolio);
     const currentValue = capitalPerson === 'nick' ? currentStats.nickValue : currentStats.joeyValue;
     
-    if (amount > currentValue) {
+    // Ensure withdrawal doesn't exceed current value (with small tolerance)
+    if (amount > currentValue + 0.01) {
       alert(`Cannot withdraw more than current value owed (${formatCurrency(currentValue)})`);
       return;
     }
+
+    // If withdrawing entire value, use exact current value to avoid rounding issues
+    const finalAmount = Math.abs(amount - currentValue) < 0.01 ? currentValue : amount;
 
     try {
       setLoading(true);
@@ -425,53 +466,54 @@ function App() {
       const response = await fetch(`${API_URL}/update-capital`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ person: capitalPerson, amount: -amount })
+        body: JSON.stringify({ person: capitalPerson, amount: -finalAmount })
       });
 
       if (!response.ok) throw new Error('Failed to update capital');
 
       // Calculate new portfolio after withdrawal
-      const newPortfolio = currentPortfolio - amount;
+      const newPortfolio = Math.max(0, currentPortfolio - finalAmount);
       
-      const newNickCapital = capitalPerson === 'nick' ? nickCapital - amount : nickCapital;
-      const newJoeyCapital = capitalPerson === 'joey' ? joeyCapital - amount : joeyCapital;
+      const newNickCapital = Math.max(0, capitalPerson === 'nick' ? nickCapital - finalAmount : nickCapital);
+      const newJoeyCapital = Math.max(0, capitalPerson === 'joey' ? joeyCapital - finalAmount : joeyCapital);
       
       // Calculate ownership and values
       let nickOwnership, joeyOwnership, nickValue, joeyValue;
       
-      if (newPortfolio === 0) {
-        nickOwnership = 0;
-        joeyOwnership = 0;
+      if (newPortfolio <= 0.01) {
+        // Portfolio effectively empty
+        nickOwnership = 50;
+        joeyOwnership = 50;
         nickValue = 0;
         joeyValue = 0;
       } else {
-        // Get current values BEFORE the withdrawal
-        const currentStats = calculateStats(currentPortfolio);
-        
         if (capitalPerson === 'nick') {
           // Nick is withdrawing
-          // Nick's new value = his current value - withdrawal
-          nickValue = currentStats.nickValue - amount;
-          // Joey's value stays exactly the same
+          nickValue = Math.max(0, currentStats.nickValue - finalAmount);
           joeyValue = currentStats.joeyValue;
         } else {
           // Joey is withdrawing
-          // Joey's new value = his current value - withdrawal
-          joeyValue = currentStats.joeyValue - amount;
-          // Nick's value stays exactly the same
+          joeyValue = Math.max(0, currentStats.joeyValue - finalAmount);
           nickValue = currentStats.nickValue;
         }
         
-        // Calculate ownership percentages based on values
+        // Calculate ownership percentages
         nickOwnership = (nickValue / newPortfolio) * 100;
         joeyOwnership = (joeyValue / newPortfolio) * 100;
+        
+        // Normalize to 100%
+        const ownershipSum = nickOwnership + joeyOwnership;
+        if (ownershipSum > 0 && Math.abs(ownershipSum - 100) > 0.001) {
+          nickOwnership = (nickOwnership / ownershipSum) * 100;
+          joeyOwnership = (joeyOwnership / ownershipSum) * 100;
+        }
       }
 
       const entryData = {
         entry_type: 'withdrawal',
         portfolio_value: newPortfolio,
         capital_person: capitalPerson,
-        capital_amount: -amount,
+        capital_amount: -finalAmount,
         nick_capital: newNickCapital,
         joey_capital: newJoeyCapital,
         nick_ownership: nickOwnership,
@@ -480,7 +522,7 @@ function App() {
         joey_value: joeyValue,
         nick_pl: nickValue - newNickCapital,
         joey_pl: joeyValue - newJoeyCapital,
-        notes: `${capitalPerson === 'nick' ? 'Nick' : 'Joey'} withdrew ${formatCurrency(amount)}`
+        notes: `${capitalPerson === 'nick' ? 'Nick' : 'Joey'} withdrew ${formatCurrency(finalAmount)}`
       };
 
       await fetch(`${API_URL}/add-entry`, {
@@ -689,8 +731,8 @@ function App() {
       }
 
       const totalValues = newNickValue + newJoeyValue;
-      if (Math.abs(totalValues - newPortfolio) > 0.02) {
-        alert(`Nick's current value + Joey's current value must equal the Portfolio Total.\n\nNick: ${formatCurrency(newNickValue)}\nJoey: ${formatCurrency(newJoeyValue)}\nSum: ${formatCurrency(totalValues)}\n\nPortfolio Total: ${formatCurrency(newPortfolio)}\n\nNote: These are current portfolio values, not capital contributions.`);
+      if (Math.abs(totalValues - newPortfolio) > 0.01) {
+        alert(`Nick's current value + Joey's current value must equal the Portfolio Total.\n\nNick: ${formatCurrency(newNickValue)}\nJoey: ${formatCurrency(newJoeyValue)}\nSum: ${formatCurrency(totalValues)}\n\nPortfolio Total: ${formatCurrency(newPortfolio)}\n\nDifference: ${formatCurrency(Math.abs(totalValues - newPortfolio))}\n\nNote: These are current portfolio values, not capital contributions.`);
         return;
       }
 
