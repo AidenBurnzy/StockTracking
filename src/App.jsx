@@ -746,6 +746,19 @@ function App() {
     setShowEditValues(true);
   };
 
+  const openAdminPanel = () => {
+    const currentPortfolio = getLatestPortfolio();
+    setAdminPortfolio(currentPortfolio.toFixed(2));
+    setAdminNickValue(currentStats.nickValue.toFixed(2));
+    setAdminJoeyValue(currentStats.joeyValue.toFixed(2));
+    setAdminNickCapital(currentStats.nickCapital.toFixed(2));
+    setAdminJoeyCapital(currentStats.joeyCapital.toFixed(2));
+    setAdminNickOwnership(currentStats.nickOwnership.toFixed(2));
+    setAdminJoeyOwnership(currentStats.joeyOwnership.toFixed(2));
+    setAdjustmentMode('recalculate');
+    setShowAdminPanel(true);
+  };
+
   const updateValues = async () => {
     const newPortfolio = parseFloat(editPortfolioTotal);
     const newNickValue = parseFloat(editNickValue);
@@ -1154,7 +1167,7 @@ function App() {
         // Show trade entry form
         break;
       case 'adjustment':
-        setShowAdminPanel(true);
+        openAdminPanel();
         break;
     }
   };
@@ -1865,7 +1878,7 @@ function App() {
             <div className="bg-slate-800 border-2 border-slate-700 p-6">
               <h3 className="text-lg font-black text-white uppercase mb-4">Admin Controls</h3>
               <button
-                onClick={openEditValues}
+                onClick={openAdminPanel}
                 disabled={loading || entries.length === 0}
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white font-black py-4 border-2 border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
