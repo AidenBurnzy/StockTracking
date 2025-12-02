@@ -1451,6 +1451,92 @@ function App() {
         )}
         {activeTab === 'transactions' && (
           <div className="space-y-6">
+            {/* Daily Trade Entry */}
+            <div className="bg-slate-800 border-2 border-slate-700 p-6">
+              <h3 className="text-lg font-black text-white uppercase mb-4 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-green-400" />
+                Daily Trade Entry
+              </h3>
+
+              <div className="grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase mb-2">
+                    New Portfolio Value *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={portfolioValue}
+                    onChange={(e) => setPortfolioValue(e.target.value)}
+                    className="w-full px-3 py-3 bg-slate-900 border-2 border-slate-700 text-white text-lg focus:outline-none focus:border-blue-600"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase mb-2">
+                    Ticker Symbol
+                  </label>
+                  <input
+                    type="text"
+                    value={ticker}
+                    onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                    className="w-full px-3 py-3 bg-slate-900 border-2 border-slate-700 text-white text-lg focus:outline-none focus:border-blue-600"
+                    placeholder="SPY, AAPL, etc."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase mb-2">
+                    Trade Type
+                  </label>
+                  <select
+                    value={tradeType}
+                    onChange={(e) => setTradeType(e.target.value)}
+                    className="w-full px-3 py-3 bg-slate-900 border-2 border-slate-700 text-white text-lg focus:outline-none focus:border-blue-600"
+                  >
+                    <option value="">Select...</option>
+                    <option value="Call">Call</option>
+                    <option value="Put">Put</option>
+                    <option value="Stock">Stock</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase mb-2">
+                    Contracts / Shares
+                  </label>
+                  <input
+                    type="text"
+                    value={contracts}
+                    onChange={(e) => setContracts(e.target.value)}
+                    className="w-full px-3 py-3 bg-slate-900 border-2 border-slate-700 text-white text-lg focus:outline-none focus:border-blue-600"
+                    placeholder="1, 10, etc."
+                  />
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-xs font-black text-slate-400 uppercase mb-2">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full px-3 py-3 bg-slate-900 border-2 border-slate-700 text-white focus:outline-none focus:border-blue-600"
+                  placeholder="Strike price, expiry, strategy, etc."
+                  rows="2"
+                />
+              </div>
+
+              <button
+                onClick={addDailyEntry}
+                disabled={loading}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-black py-3 border-2 border-green-500 disabled:opacity-50"
+              >
+                {loading ? 'Saving...' : 'Save Daily Entry'}
+              </button>
+            </div>
             {/* Filters and Controls */}
             <div className="bg-slate-800 border-2 border-slate-700 p-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -1506,10 +1592,9 @@ function App() {
             {getFilteredEntries().length > 0 ? (
               <div className={viewMode === 'grid' ? 'grid md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
                 {getFilteredEntries().map((entry) => {
-                  const stats = calculateStats(entry.portfolio_value, entry.nick_ownership);
-                  const isCapital = entry.type === 'capital';
-                  const isWithdrawal = entry.type === 'withdrawal';
-                  const isTrade = entry.type === 'trade';
+                  const isCapital = entry.entry_type === 'capital';
+                  const isWithdrawal = entry.entry_type === 'withdrawal';
+                  const isTrade = entry.entry_type === 'trade';
                   
                   return (
                     <div
@@ -1530,24 +1615,31 @@ function App() {
                           </div>
                           <div>
                             <div className="text-white font-black text-sm uppercase">
-                              {isCapital ? 'Capital Deposit' :
-                               isWithdrawal ? 'Withdrawal' :
-                               'Trade Execution'}
+                              {isCapital ? 'Capital Deposit' : isWithdrawal ? 'Withdrawal' : 'Trade'}
                             </div>
                             <div className="text-slate-400 text-xs font-medium">
-                              {new Date(entry.timestamp).toLocaleString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
+                              {formatDate(entry.entry_date)}
                             </div>
                           </div>
                         </div>
-                        {deleteMode && (
-                          <div className="w-6 h-6 bg-red-600 flex items-center justify-center">
-                            <Trash2 className="w-4 h-4 text-white" />
+                        {!deleteMode && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => restoreToHistoryPoint(entry)}
+                              className="text-slate-300 hover:text-white"
+                              title="Restore to this point"
+                            >
+                              <History className="w-4 h-4" />
+                            </button>
+                            {isTrade && (
+                              <button
+                                onClick={() => openEditEntry(entry)}
+                                className="text-slate-300 hover:text-white"
+                                title="Edit entry"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1560,10 +1652,10 @@ function App() {
                         {(isCapital || isWithdrawal) && (
                           <div>
                             <div className="text-xs text-slate-500 font-black uppercase mb-1">
-                              {entry.person === 'nick' ? 'Nick' : 'Joey'}
+                              {entry.capital_person === 'nick' ? 'Nick' : 'Joey'}
                             </div>
-                            <div className={`font-black ${entry.person === 'nick' ? 'text-red-400' : 'text-cyan-400'}`}>
-                              {formatCurrency(entry.amount)}
+                            <div className={`font-black ${entry.capital_person === 'nick' ? 'text-red-400' : 'text-cyan-400'}`}>
+                              {formatCurrency(Math.abs(entry.capital_amount))}
                             </div>
                           </div>
                         )}
@@ -1573,13 +1665,13 @@ function App() {
                         </div>
                         <div>
                           <div className="text-xs text-slate-500 font-black uppercase mb-1">Joey</div>
-                          <div className="text-cyan-400 font-black">{formatPercent(100 - entry.nick_ownership)}</div>
+                          <div className="text-cyan-400 font-black">{formatPercent(entry.joey_ownership)}</div>
                         </div>
                       </div>
                       
-                      {entry.note && (
+                      {entry.notes && (
                         <div className="mt-3 pt-3 border-t-2 border-slate-700">
-                          <div className="text-xs text-slate-400 font-medium">{entry.note}</div>
+                          <div className="text-xs text-slate-400 font-medium">{entry.notes}</div>
                         </div>
                       )}
                     </div>
