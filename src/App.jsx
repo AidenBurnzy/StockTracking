@@ -1086,58 +1086,64 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-slate-950 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-4 mb-2">
-            <h1 className="text-4xl md:text-5xl font-bold text-white">
-              Trading Tracker
-            </h1>
-            <button
-              onClick={loadData}
-              disabled={loading}
-              className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition-colors disabled:opacity-50"
-              title="Refresh data"
-            >
-              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+        <div className="bg-white border-b-4 border-blue-600 shadow-lg mb-8">
+          <div className="px-8 py-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-4xl font-black text-slate-900 tracking-tight uppercase">Portfolio Tracker</h1>
+                <p className="text-slate-600 font-medium mt-1">Nick & Joey's Investment Portfolio</p>
+              </div>
+              <button
+                onClick={loadData}
+                disabled={loading}
+                className="p-3 bg-slate-100 hover:bg-slate-200 border-2 border-slate-300 text-slate-700 transition-colors disabled:opacity-50"
+                title="Refresh data"
+              >
+                <RefreshCw className={`w-6 h-6 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
-          <p className="text-slate-400 text-lg">Nick & Joey's Portfolio</p>
         </div>
 
         {/* Current Stats Summary */}
-        <div className="bg-slate-800 rounded-2xl shadow-2xl p-6 mb-8 border border-slate-700">
-          <div className="flex justify-between items-start mb-4">
-            <h2 className="text-xl font-bold text-white">Current Stats</h2>
-            <button
-              onClick={openEditValues}
-              disabled={loading || entries.length === 0}
-              className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              title="Edit all values"
-            >
-              <Edit2 className="w-4 h-4" />
-              <span className="text-sm font-medium">Edit Values</span>
-            </button>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="text-slate-400 text-sm mb-2">Portfolio Value</div>
-              <div className="text-3xl font-bold text-blue-400">
-                {formatCurrency(getLatestPortfolio())}
-              </div>
+        <div className="bg-white shadow-lg border-l-8 border-blue-600 mb-8">
+          <div className="px-8 py-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Portfolio Overview</h2>
+              <button
+                onClick={openEditValues}
+                disabled={loading || entries.length === 0}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border-2 border-blue-700"
+                title="Edit all values"
+              >
+                <Edit2 className="w-4 h-4" />
+                <span className="text-sm">EDIT VALUES</span>
+              </button>
             </div>
-            <div className="text-center">
-              <div className="text-slate-400 text-sm mb-2">Total Invested</div>
-              <div className="text-3xl font-bold text-slate-300">
-                {formatCurrency(currentStats.totalCapital)}
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="bg-slate-50 border-2 border-slate-200 p-6">
+                <div className="text-slate-600 text-xs font-bold uppercase tracking-wider mb-2">Portfolio Value</div>
+                <div className="text-4xl font-black text-slate-900">
+                  {formatCurrency(getLatestPortfolio())}
+                </div>
               </div>
-            </div>
-            <div className="text-center">
-              <div className="text-slate-400 text-sm mb-2">Total P/L</div>
-              <div className={`text-3xl font-bold flex items-center justify-center gap-2 ${currentStats.totalPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {currentStats.totalPL >= 0 ? <TrendingUp className="w-7 h-7" /> : <TrendingDown className="w-7 h-7" />}
-                {formatCurrency(currentStats.totalPL)}
+              <div className="bg-slate-50 border-2 border-slate-200 p-6">
+                <div className="text-slate-600 text-xs font-bold uppercase tracking-wider mb-2">Total Invested</div>
+                <div className="text-4xl font-black text-slate-900">
+                  {formatCurrency(currentStats.totalCapital)}
+                </div>
+              </div>
+              <div className="bg-slate-50 border-2 border-slate-200 p-6">
+                <div className="text-slate-600 text-xs font-bold uppercase tracking-wider mb-2">Total P/L</div>
+                <div className={`text-4xl font-black flex items-center gap-2 ${
+                  currentStats.totalPL >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {currentStats.totalPL >= 0 ? <TrendingUp className="w-8 h-8" /> : <TrendingDown className="w-8 h-8" />}
+                  {formatCurrency(currentStats.totalPL)}
+                </div>
               </div>
             </div>
           </div>
@@ -1146,110 +1152,118 @@ function App() {
         {/* Live Position Stats */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* Nick's Box */}
-          <div className="bg-gradient-to-br from-red-900 to-red-800 rounded-2xl shadow-2xl p-6 border border-red-700">
-            <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-3 h-3 bg-red-400 rounded-full"></div>
-              Nick's Position
-            </h3>
-            
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-red-200">Total Invested</span>
-                <span className="text-xl font-bold text-white">
-                  {formatCurrency(nickCapital)}
-                </span>
+          <div className="bg-white shadow-lg border-t-8 border-red-600">
+            <div className="px-8 py-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-4 h-4 bg-red-600"></div>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Nick's Position</h3>
               </div>
               
-              <div className="flex justify-between items-center">
-                <span className="text-red-200">Ownership</span>
-                <span className="text-2xl font-bold text-white flex items-center gap-1">
-                  {formatPercent(currentStats.nickOwnership)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-red-200">Current Value</span>
-                <span className="text-2xl font-bold text-white">
-                  {formatCurrency(currentStats.nickValue)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center pt-3 border-t border-red-700">
-                <span className="text-red-200">Profit/Loss</span>
-                <span className={`text-2xl font-bold flex items-center gap-1 ${currentStats.nickPL >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                  {currentStats.nickPL >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
-                  {formatCurrency(currentStats.nickPL)}
-                </span>
-              </div>
-              
-              <div className="bg-red-950 rounded-lg p-4 mt-4">
-                <div className="text-sm text-red-300 mb-1">Amount Owed to Nick</div>
-                <div className="text-3xl font-bold text-white">
-                  {formatCurrency(currentStats.nickValue)}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3">
+                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Total Invested</span>
+                  <span className="text-xl font-black text-slate-900">
+                    {formatCurrency(nickCapital)}
+                  </span>
                 </div>
+                
+                <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3">
+                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Ownership</span>
+                  <span className="text-2xl font-black text-red-600">
+                    {formatPercent(currentStats.nickOwnership)}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3">
+                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Current Value</span>
+                  <span className="text-2xl font-black text-slate-900">
+                    {formatCurrency(currentStats.nickValue)}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center pt-4 border-t-4 border-slate-200">
+                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Profit/Loss</span>
+                  <span className={`text-2xl font-black flex items-center gap-2 ${
+                    currentStats.nickPL >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {currentStats.nickPL >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
+                    {formatCurrency(currentStats.nickPL)}
+                  </span>
+                </div>
+                
+                <div className="bg-red-50 border-2 border-red-200 p-4 mt-6">
+                  <div className="text-xs font-bold text-red-600 uppercase tracking-wider mb-1">Amount Owed</div>
+                  <div className="text-3xl font-black text-red-900">
+                    {formatCurrency(currentStats.nickValue)}
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => openDepositHistory('nick')}
+                  className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-3 transition-colors flex items-center justify-center gap-2 border-2 border-red-700"
+                >
+                  <History className="w-4 h-4" />
+                  DEPOSIT HISTORY
+                </button>
               </div>
-              
-              <button
-                onClick={() => openDepositHistory('nick')}
-                className="w-full mt-4 bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                <History className="w-4 h-4" />
-                View Deposit History
-              </button>
             </div>
           </div>
 
           {/* Joey's Box */}
-          <div className="bg-gradient-to-br from-cyan-900 to-blue-800 rounded-2xl shadow-2xl p-6 border border-cyan-700">
-            <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-3 h-3 bg-cyan-400 rounded-full"></div>
-              Joey's Position
-            </h3>
-            
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-cyan-200">Total Invested</span>
-                <span className="text-xl font-bold text-white">
-                  {formatCurrency(joeyCapital)}
-                </span>
+          <div className="bg-white shadow-lg border-t-8 border-cyan-600">
+            <div className="px-8 py-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-4 h-4 bg-cyan-600"></div>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Joey's Position</h3>
               </div>
               
-              <div className="flex justify-between items-center">
-                <span className="text-cyan-200">Ownership</span>
-                <span className="text-2xl font-bold text-white flex items-center gap-1">
-                  {formatPercent(currentStats.joeyOwnership)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-cyan-200">Current Value</span>
-                <span className="text-2xl font-bold text-white">
-                  {formatCurrency(currentStats.joeyValue)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center pt-3 border-t border-cyan-700">
-                <span className="text-cyan-200">Profit/Loss</span>
-                <span className={`text-2xl font-bold flex items-center gap-1 ${currentStats.joeyPL >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                  {currentStats.joeyPL >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
-                  {formatCurrency(currentStats.joeyPL)}
-                </span>
-              </div>
-              
-              <div className="bg-cyan-950 rounded-lg p-4 mt-4">
-                <div className="text-sm text-cyan-300 mb-1">Amount Owed to Joey</div>
-                <div className="text-3xl font-bold text-white">
-                  {formatCurrency(currentStats.joeyValue)}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3">
+                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Total Invested</span>
+                  <span className="text-xl font-black text-slate-900">
+                    {formatCurrency(joeyCapital)}
+                  </span>
                 </div>
+                
+                <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3">
+                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Ownership</span>
+                  <span className="text-2xl font-black text-cyan-600">
+                    {formatPercent(currentStats.joeyOwnership)}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3">
+                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Current Value</span>
+                  <span className="text-2xl font-black text-slate-900">
+                    {formatCurrency(currentStats.joeyValue)}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center pt-4 border-t-4 border-slate-200">
+                  <span className="text-slate-600 font-bold text-sm uppercase tracking-wide">Profit/Loss</span>
+                  <span className={`text-2xl font-black flex items-center gap-2 ${
+                    currentStats.joeyPL >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {currentStats.joeyPL >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
+                    {formatCurrency(currentStats.joeyPL)}
+                  </span>
+                </div>
+                
+                <div className="bg-cyan-50 border-2 border-cyan-200 p-4 mt-6">
+                  <div className="text-xs font-bold text-cyan-600 uppercase tracking-wider mb-1">Amount Owed</div>
+                  <div className="text-3xl font-black text-cyan-900">
+                    {formatCurrency(currentStats.joeyValue)}
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => openDepositHistory('joey')}
+                  className="w-full mt-4 bg-cyan-600 hover:bg-cyan-700 text-white font-bold px-4 py-3 transition-colors flex items-center justify-center gap-2 border-2 border-cyan-700"
+                >
+                  <History className="w-4 h-4" />
+                  DEPOSIT HISTORY
+                </button>
               </div>
-              
-              <button
-                onClick={() => openDepositHistory('joey')}
-                className="w-full mt-4 bg-cyan-700 hover:bg-cyan-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                <History className="w-4 h-4" />
-                View Deposit History
-              </button>
             </div>
           </div>
         </div>
@@ -1259,7 +1273,7 @@ function App() {
           <button
             onClick={() => setShowAddCapital(true)}
             disabled={loading}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2 disabled:opacity-50"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-black py-4 px-10 transition-colors shadow-lg flex items-center gap-3 disabled:opacity-50 border-2 border-blue-700 uppercase tracking-wide"
           >
             <PiggyBank className="w-5 h-5" />
             Add Capital
@@ -1267,15 +1281,15 @@ function App() {
           <button
             onClick={() => setShowWithdrawCapital(true)}
             disabled={loading}
-            className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2 disabled:opacity-50"
+            className="bg-red-600 hover:bg-red-700 text-white font-black py-4 px-10 transition-colors shadow-lg flex items-center gap-3 disabled:opacity-50 border-2 border-red-700 uppercase tracking-wide"
           >
             <MinusCircle className="w-5 h-5" />
-            Withdraw Capital
+            Withdraw
           </button>
           <button
             onClick={openAdminPanel}
             disabled={loading}
-            className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-8 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2 disabled:opacity-50"
+            className="bg-yellow-600 hover:bg-yellow-700 text-white font-black py-4 px-10 transition-colors shadow-lg flex items-center gap-3 disabled:opacity-50 border-2 border-yellow-700 uppercase tracking-wide"
           >
             <Edit2 className="w-5 h-5" />
             Admin Panel
@@ -1284,41 +1298,41 @@ function App() {
 
         {/* Add Capital Modal */}
         {showAddCapital && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-800 rounded-2xl p-8 max-w-md w-full border border-slate-700">
-              <h3 className="text-2xl font-bold text-white mb-6">Add Capital</h3>
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div className="bg-white shadow-2xl p-8 max-w-md w-full border-t-8 border-blue-600">
+              <h3 className="text-3xl font-black text-slate-900 mb-6 uppercase tracking-tight">Add Capital</h3>
               
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-3">
                     Who is investing?
                   </label>
-                  <div className="flex gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setCapitalPerson('nick')}
-                      className={`flex-1 py-3 rounded-lg font-medium transition-all ${
+                      className={`py-4 font-black transition-all border-2 ${
                         capitalPerson === 'nick'
-                          ? 'bg-red-600 text-white'
-                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          ? 'bg-red-600 text-white border-red-700'
+                          : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
                       }`}
                     >
-                      Nick
+                      NICK
                     </button>
                     <button
                       onClick={() => setCapitalPerson('joey')}
-                      className={`flex-1 py-3 rounded-lg font-medium transition-all ${
+                      className={`py-4 font-black transition-all border-2 ${
                         capitalPerson === 'joey'
-                          ? 'bg-cyan-600 text-white'
-                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          ? 'bg-cyan-600 text-white border-cyan-700'
+                          : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
                       }`}
                     >
-                      Joey
+                      JOEY
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-3">
                     Amount
                   </label>
                   <input
@@ -1326,22 +1340,22 @@ function App() {
                     step="0.01"
                     value={capitalAmount}
                     onChange={(e) => setCapitalAmount(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-300 text-slate-900 text-xl font-bold focus:outline-none focus:ring-0 focus:border-blue-600"
                     placeholder="0.00"
                   />
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                <div className="grid grid-cols-2 gap-3 pt-4">
                   <button
                     onClick={() => setShowAddCapital(false)}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-lg transition-all"
+                    className="bg-slate-200 hover:bg-slate-300 text-slate-900 font-black py-3 transition-all border-2 border-slate-300 uppercase"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={addCapital}
                     disabled={loading}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition-all disabled:opacity-50"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-black py-3 transition-all disabled:opacity-50 border-2 border-blue-700 uppercase"
                   >
                     Add Capital
                   </button>
