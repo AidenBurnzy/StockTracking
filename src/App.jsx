@@ -1188,87 +1188,135 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-950">
       {/* Top Navigation Bar */}
-      <div className="bg-slate-900 border-b-2 border-slate-700">
-        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3 sm:py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">Portfolio Manager</h1>
-                <p className="text-xs text-slate-400 font-medium">Joint Investment Account</p>
-              </div>
-              
-              {/* Tab Navigation */}
-              <nav className="flex gap-1 sm:gap-2 overflow-x-auto pb-1 sm:pb-0">
-                <button
-                  onClick={() => setActiveTab('dashboard')}
-                  className={`flex-shrink-0 px-3 sm:px-6 py-2 font-black text-xs sm:text-sm uppercase tracking-wide transition-all ${
-                    activeTab === 'dashboard'
-                      ? 'bg-blue-600 text-white border-2 border-blue-500'
-                      : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
-                  }`}
-                >
-                  <BarChart3 className="w-4 h-4 inline mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Dashboard</span>
-                  <span className="sm:hidden">Dash</span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('transactions')}
-                  className={`flex-shrink-0 px-3 sm:px-6 py-2 font-black text-xs sm:text-sm uppercase tracking-wide transition-all ${
-                    activeTab === 'transactions'
-                      ? 'bg-blue-600 text-white border-2 border-blue-500'
-                      : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
-                  }`}
-                >
-                  <History className="w-4 h-4 inline mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Transactions</span>
-                  <span className="sm:hidden">Trans</span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('analytics')}
-                  className={`flex-shrink-0 px-3 sm:px-6 py-2 font-black text-xs sm:text-sm uppercase tracking-wide transition-all ${
-                    activeTab === 'analytics'
-                      ? 'bg-blue-600 text-white border-2 border-blue-500'
-                      : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
-                  }`}
-                >
-                  <PieChart className="w-4 h-4 inline mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Analytics</span>
-                  <span className="sm:hidden">Stats</span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('settings')}
-                  className={`flex-shrink-0 px-3 sm:px-6 py-2 font-black text-xs sm:text-sm uppercase tracking-wide transition-all ${
-                    activeTab === 'settings'
-                      ? 'bg-blue-600 text-white border-2 border-blue-500'
-                      : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
-                  }`}
-                >
-                  <Settings className="w-4 h-4 inline mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Settings</span>
-                  <span className="sm:hidden">Set</span>
-                </button>
-              </nav>
+      <div className="bg-slate-900 border-b-2 border-slate-700 sticky top-0 z-40">
+        <div className="px-3 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-4">
+            {/* Logo/Title */}
+            <div className="min-w-0 flex-shrink">
+              <h1 className="text-base sm:text-xl lg:text-2xl font-black text-white uppercase tracking-tight truncate">Portfolio Manager</h1>
+              <p className="text-xs text-slate-400 font-medium hidden sm:block">Joint Investment Account</p>
             </div>
-
-            <div className="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-0">
+            
+            {/* Tab Navigation - Desktop */}
+            <nav className="hidden lg:flex gap-1">
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`px-6 py-2 font-bold text-sm uppercase tracking-wide transition-all ${
+                  activeTab === 'dashboard'
+                    ? 'text-blue-400 border-b-2 border-blue-400'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <BarChart3 className="w-4 h-4 inline mr-2" />
+                Dashboard
+              </button>
+              <button
+                onClick={() => setActiveTab('transactions')}
+                className={`px-6 py-2 font-bold text-sm uppercase tracking-wide transition-all ${
+                  activeTab === 'transactions'
+                    ? 'text-blue-400 border-b-2 border-blue-400'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <History className="w-4 h-4 inline mr-2" />
+                Transactions
+              </button>
+              <button
+                onClick={() => setActiveTab('analytics')}
+                className={`px-6 py-2 font-bold text-sm uppercase tracking-wide transition-all ${
+                  activeTab === 'analytics'
+                    ? 'text-blue-400 border-b-2 border-blue-400'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <PieChart className="w-4 h-4 inline mr-2" />
+                Analytics
+              </button>
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`px-6 py-2 font-bold text-sm uppercase tracking-wide transition-all ${
+                  activeTab === 'settings'
+                    ? 'text-blue-400 border-b-2 border-blue-400'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Settings className="w-4 h-4 inline mr-2" />
+                Settings
+              </button>
+            </nav>
+            
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={loadData}
                 disabled={loading}
                 className="p-2 bg-slate-800 hover:bg-slate-700 border-2 border-slate-700 text-slate-300 transition-colors disabled:opacity-50"
                 title="Refresh"
               >
-                <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
               <button
                 onClick={() => getQuickAction('deposit')}
-                className="px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-black text-xs sm:text-sm border-2 border-green-500 flex items-center gap-1 sm:gap-2"
+                className="px-2 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-black text-xs sm:text-sm border-2 border-green-500 flex items-center gap-1"
               >
                 <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">QUICK ADD</span>
-                <span className="sm:hidden">ADD</span>
+                <span className="hidden md:inline">QUICK ADD</span>
+                <span className="md:hidden">ADD</span>
               </button>
             </div>
           </div>
+          
+          {/* Tab Navigation - Mobile */}
+          <nav className="flex lg:hidden gap-1 overflow-x-auto mt-3 -mb-3 sm:-mb-4 scrollbar-hide">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`flex-shrink-0 px-3 sm:px-5 py-2 font-black text-xs sm:text-sm uppercase tracking-wide transition-all whitespace-nowrap ${
+                activeTab === 'dashboard'
+                  ? 'bg-blue-600 text-white border-2 border-blue-500'
+                  : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 inline mr-1" />
+              <span className="hidden xs:inline">Dashboard</span>
+              <span className="xs:hidden">Dash</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('transactions')}
+              className={`flex-shrink-0 px-3 sm:px-5 py-2 font-black text-xs sm:text-sm uppercase tracking-wide transition-all whitespace-nowrap ${
+                activeTab === 'transactions'
+                  ? 'bg-blue-600 text-white border-2 border-blue-500'
+                  : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
+              }`}
+            >
+              <History className="w-4 h-4 inline mr-1" />
+              <span className="hidden xs:inline">Transactions</span>
+              <span className="xs:hidden">Trans</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`flex-shrink-0 px-3 sm:px-5 py-2 font-black text-xs sm:text-sm uppercase tracking-wide transition-all whitespace-nowrap ${
+                activeTab === 'analytics'
+                  ? 'bg-blue-600 text-white border-2 border-blue-500'
+                  : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
+              }`}
+            >
+              <PieChart className="w-4 h-4 inline mr-1" />
+              <span className="hidden xs:inline">Analytics</span>
+              <span className="xs:hidden">Stats</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`flex-shrink-0 px-3 sm:px-5 py-2 font-black text-xs sm:text-sm uppercase tracking-wide transition-all whitespace-nowrap ${
+                activeTab === 'settings'
+                  ? 'bg-blue-600 text-white border-2 border-blue-500'
+                  : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:bg-slate-700'
+              }`}
+            >
+              <Settings className="w-4 h-4 inline mr-1" />
+              <span className="hidden xs:inline">Settings</span>
+              <span className="xs:hidden">Set</span>
+            </button>
+          </nav>
         </div>
       </div>
 
