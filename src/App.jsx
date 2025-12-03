@@ -53,6 +53,17 @@ function App() {
   const [adminNickOwnership, setAdminNickOwnership] = useState('');
   const [adminJoeyOwnership, setAdminJoeyOwnership] = useState('');
   const [adjustmentMode, setAdjustmentMode] = useState('recalculate');
+  
+  // Dynamic admin state for all partners
+  const [adminPartnerValues, setAdminPartnerValues] = useState({}); // { partnerId: { capital, value, ownership } }
+  
+  // Partner management state
+  const [showManagePartners, setShowManagePartners] = useState(false);
+  const [showAddPartner, setShowAddPartner] = useState(false);
+  const [newPartnerName, setNewPartnerName] = useState('');
+  const [newPartnerDisplayName, setNewPartnerDisplayName] = useState('');
+  const [newPartnerColor, setNewPartnerColor] = useState('blue');
+  const [editingPartner, setEditingPartner] = useState(null);
 
   // API base URL
   // Priority:
@@ -94,32 +105,23 @@ function App() {
       setLoading(true);
       setError(null);
 
-      // Fetch capital data (old schema for now)
-      const capitalData = await fetchJson(`${API_URL}/get-capital`);
-      
-      // Convert old capital format to partners format for compatibility
-      const mockPartners = capitalData.map((c, index) => ({
-        id: index + 1,
-        name: c.person,
-        display_name: c.person === 'nick' ? 'Nick' : c.person === 'joey' ? 'Joey' : c.person,
-        color: c.person === 'nick' ? '#ef4444' : '#06b6d4',
-        total_invested: parseFloat(c.total_invested),
-        active: true
-      }));
-      
-      setPartners(mockPartners);
+      // Fetch partners from manage-partners endpoint
+      const partnersData = await fetchJson(`${API_URL}/manage-partners`);
+      setPartners(partnersData);
       
       // Build partnerCapitals object for quick lookup
       const capitals = {};
-      mockPartners.forEach(p => {
+      partnersData.forEach(p => {
         capitals[p.id] = p.total_invested;
       });
       setPartnerCapitals(capitals);
       
-      // Set default selected partner (Nick = id 1)
-      if (mockPartners.length > 0 && !selectedPartnerId) {
-        const nickPartner = mockPartners.find(p => p.name === 'nick');
-        setSelectedPartnerId(nickPartner?.id || mockPartners[0].id);
+      // Set default selected partner if none selected
+      if (partnersData.length > 0 && !selectedPartnerId) {
+        const firstActivePartner = partnersData.find(p => p.active !== false);
+        if (firstActivePartner) {
+          setSelectedPartnerId(firstActivePartner.id);
+        }
       }
 
       // Fetch entries
@@ -815,14 +817,42 @@ function App() {
   };
 
   const openAdminPanel = () => {
+    if (partners.length === 0) {
+      alert('No partners found. Please add partners first.');
+      return;
+    }
+    
     const currentPortfolio = getLatestPortfolio();
     setAdminPortfolio(currentPortfolio.toFixed(2));
-    setAdminNickValue(currentStats.nickValue.toFixed(2));
-    setAdminJoeyValue(currentStats.joeyValue.toFixed(2));
-    setAdminNickCapital(nickCapital.toFixed(2));
-    setAdminJoeyCapital(joeyCapital.toFixed(2));
-    setAdminNickOwnership(currentStats.nickOwnership.toFixed(2));
-    setAdminJoeyOwnership(currentStats.joeyOwnership.toFixed(2));
+    
+    // Build dynamic partner values object
+    const partnerValues = {};
+    partners.forEach(partner => {
+      const stats = currentStats.partners.find(s => s.id === partner.id);
+      partnerValues[partner.id] = {
+        capital: parseFloat(partner.total_invested || 0).toFixed(2),
+        value: parseFloat(stats?.value || 0).toFixed(2),
+        ownership: parseFloat(stats?.ownership || 0).toFixed(2)
+      };
+    });
+    setAdminPartnerValues(partnerValues);
+    
+    // Also set backward compatibility values for nick/joey
+    const nickPartner = partners.find(p => p.name === 'nick');
+    const joeyPartner = partners.find(p => p.name === 'joey');
+    
+    if (nickPartner && partnerValues[nickPartner.id]) {
+      setAdminNickCapital(partnerValues[nickPartner.id].capital);
+      setAdminNickValue(partnerValues[nickPartner.id].value);
+      setAdminNickOwnership(partnerValues[nickPartner.id].ownership);
+    }
+    
+    if (joeyPartner && partnerValues[joeyPartner.id]) {
+      setAdminJoeyCapital(partnerValues[joeyPartner.id].capital);
+      setAdminJoeyValue(partnerValues[joeyPartner.id].value);
+      setAdminJoeyOwnership(partnerValues[joeyPartner.id].ownership);
+    }
+    
     setAdjustmentMode('recalculate');
     setShowAdminPanel(true);
   };
@@ -1223,7 +1253,7 @@ function App() {
         setShowWithdrawCapital(true);
         break;
       case 'trade':
-        // Show trade entry form
+        setActiveTab('transactions');
         break;
       case 'adjustment':
         openAdminPanel();
@@ -1452,107 +1482,72 @@ function App() {
 
             {/* Partner Cards Row */}
             <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
-              {/* Nick's Card */}
-              <div className="bg-slate-800 border-l-4 sm:border-l-8 border-red-600 p-4 sm:p-6">
-                <div className="flex items-center justify-between mb-4 sm:mb-6">
-                  <div>
-                    <h3 className="text-xl sm:text-2xl font-black text-white uppercase">Nick</h3>
-                    <p className="text-xs sm:text-sm text-slate-400 font-bold">Partner 1</p>
-                  </div>
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-red-600 flex items-center justify-center text-white font-black text-xl sm:text-2xl border-2 border-red-500">
-                    N
-                  </div>
-                </div>
+              {partners.filter(p => p.active !== false).map(partner => {
+                const stats = currentStats.partners.find(s => s.id === partner.id) || {
+                  capital: partner.total_invested,
+                  value: 0,
+                  ownership: 0,
+                  pl: 0
+                };
+                
+                return (
+                  <div key={partner.id} className={`bg-slate-800 border-l-4 sm:border-l-8 border-${partner.color}-600 p-4 sm:p-6`}>
+                    <div className="flex items-center justify-between mb-4 sm:mb-6">
+                      <div>
+                        <h3 className="text-xl sm:text-2xl font-black text-white uppercase">{partner.display_name}</h3>
+                        <p className="text-xs sm:text-sm text-slate-400 font-bold">Partner</p>
+                      </div>
+                      <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-${partner.color}-600 flex items-center justify-center text-white font-black text-xl sm:text-2xl border-2 border-${partner.color}-500`}>
+                        {partner.display_name.charAt(0).toUpperCase()}
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <div className="text-xs text-slate-500 font-black uppercase mb-1">Invested</div>
-                    <div className="text-lg sm:text-xl font-black text-white">{formatCurrency(nickCapital)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-500 font-black uppercase mb-1">Current Value</div>
-                    <div className="text-lg sm:text-xl font-black text-white">{formatCurrency(currentStats.nickValue)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-500 font-black uppercase mb-1">Ownership</div>
-                    <div className="text-lg sm:text-xl font-black text-red-400">{formatPercent(currentStats.nickOwnership)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-500 font-black uppercase mb-1">P/L</div>
-                    <div className={`text-lg sm:text-xl font-black ${currentStats.nickPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {formatCurrency(currentStats.nickPL)}
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                      <div>
+                        <div className="text-xs text-slate-500 font-black uppercase mb-1">Invested</div>
+                        <div className="text-lg sm:text-xl font-black text-white">{formatCurrency(stats.capital)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-500 font-black uppercase mb-1">Current Value</div>
+                        <div className="text-lg sm:text-xl font-black text-white">{formatCurrency(stats.value)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-500 font-black uppercase mb-1">Ownership</div>
+                        <div className={`text-lg sm:text-xl font-black text-${partner.color}-400`}>{formatPercent(stats.ownership)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-500 font-black uppercase mb-1">P/L</div>
+                        <div className={`text-lg sm:text-xl font-black ${stats.pl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {formatCurrency(stats.pl)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 sm:mt-6 pt-4 border-t-2 border-slate-700 flex gap-2 sm:gap-3">
+                      <button
+                        onClick={() => { 
+                          setSelectedPartnerId(partner.id);
+                          setShowAddCapital(true);
+                        }}
+                        className={`flex-1 bg-${partner.color}-600 hover:bg-${partner.color}-700 text-white font-black py-2 sm:py-3 text-xs sm:text-sm border-2 border-${partner.color}-500`}
+                      >
+                        <Plus className="w-4 h-4 inline mr-1" />
+                        DEPOSIT
+                      </button>
+                      <button
+                        onClick={() => { 
+                          setSelectedPartnerId(partner.id);
+                          setShowWithdrawCapital(true);
+                        }}
+                        className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-black py-2 sm:py-3 text-xs sm:text-sm border-2 border-slate-600"
+                      >
+                        <MinusCircle className="w-4 h-4 inline mr-1" />
+                        WITHDRAW
+                      </button>
                     </div>
                   </div>
-                </div>
-
-                <div className="mt-4 sm:mt-6 pt-4 border-t-2 border-slate-700 flex gap-2 sm:gap-3">
-                  <button
-                    onClick={() => { setCapitalPerson('nick'); getQuickAction('deposit'); }}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black py-2 sm:py-3 text-xs sm:text-sm border-2 border-red-500"
-                  >
-                    <Plus className="w-4 h-4 inline mr-1" />
-                    DEPOSIT
-                  </button>
-                  <button
-                    onClick={() => { setCapitalPerson('nick'); getQuickAction('withdraw'); }}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-black py-2 sm:py-3 text-xs sm:text-sm border-2 border-slate-600"
-                  >
-                    <MinusCircle className="w-4 h-4 inline mr-1" />
-                    WITHDRAW
-                  </button>
-                </div>
-              </div>
-
-              {/* Joey's Card */}
-              <div className="bg-slate-800 border-l-4 sm:border-l-8 border-cyan-600 p-4 sm:p-6">
-                <div className="flex items-center justify-between mb-4 sm:mb-6">
-                  <div>
-                    <h3 className="text-xl sm:text-2xl font-black text-white uppercase">Joey</h3>
-                    <p className="text-xs sm:text-sm text-slate-400 font-bold">Partner 2</p>
-                  </div>
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-cyan-600 flex items-center justify-center text-white font-black text-xl sm:text-2xl border-2 border-cyan-500">
-                    J
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <div className="text-xs text-slate-500 font-black uppercase mb-1">Invested</div>
-                    <div className="text-lg sm:text-xl font-black text-white">{formatCurrency(joeyCapital)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-500 font-black uppercase mb-1">Current Value</div>
-                    <div className="text-lg sm:text-xl font-black text-white">{formatCurrency(currentStats.joeyValue)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-500 font-black uppercase mb-1">Ownership</div>
-                    <div className="text-lg sm:text-xl font-black text-cyan-400">{formatPercent(currentStats.joeyOwnership)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-500 font-black uppercase mb-1">P/L</div>
-                    <div className={`text-lg sm:text-xl font-black ${currentStats.joeyPL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {formatCurrency(currentStats.joeyPL)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 sm:mt-6 pt-4 border-t-2 border-slate-700 flex gap-2 sm:gap-3">
-                  <button
-                    onClick={() => { setCapitalPerson('joey'); getQuickAction('deposit'); }}
-                    className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white font-black py-2 sm:py-3 text-xs sm:text-sm border-2 border-cyan-500"
-                  >
-                    <Plus className="w-4 h-4 inline mr-1" />
-                    DEPOSIT
-                  </button>
-                  <button
-                    onClick={() => { setCapitalPerson('joey'); getQuickAction('withdraw'); }}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-black py-2 sm:py-3 text-xs sm:text-sm border-2 border-slate-600"
-                  >
-                    <MinusCircle className="w-4 h-4 inline mr-1" />
-                    WITHDRAW
-                  </button>
-                </div>
-              </div>
+                );
+              })}
             </div>
 
             {/* Quick Actions */}
@@ -1932,58 +1927,39 @@ function App() {
               <div className="bg-slate-800 border-2 border-slate-700 p-6">
                 <h3 className="text-lg font-black text-white uppercase mb-4">Ownership Distribution</h3>
                 <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-red-400 font-black text-sm">Nick</span>
-                      <span className="text-white font-black">{formatPercent(currentStats.nickOwnership)}</span>
+                  {currentStats.partners.map(partner => (
+                    <div key={partner.id}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-${partner.color}-400 font-black text-sm`}>{partner.display_name}</span>
+                        <span className="text-white font-black">{formatPercent(partner.ownership)}</span>
+                      </div>
+                      <div className="h-8 bg-slate-900 border-2 border-slate-700 overflow-hidden">
+                        <div
+                          className={`h-full bg-gradient-to-r from-${partner.color}-600 to-${partner.color}-500 border-r-4 border-${partner.color}-400`}
+                          style={{ width: `${partner.ownership}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-8 bg-slate-900 border-2 border-slate-700 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-red-600 to-red-500 border-r-4 border-red-400"
-                        style={{ width: `${currentStats.nickOwnership}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-cyan-400 font-black text-sm">Joey</span>
-                      <span className="text-white font-black">{formatPercent(currentStats.joeyOwnership)}</span>
-                    </div>
-                    <div className="h-8 bg-slate-900 border-2 border-slate-700 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-cyan-600 to-cyan-500 border-r-4 border-cyan-400"
-                        style={{ width: `${currentStats.joeyOwnership}%` }}
-                      />
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
               <div className="bg-slate-800 border-2 border-slate-700 p-6">
                 <h3 className="text-lg font-black text-white uppercase mb-4">Value Distribution</h3>
                 <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-red-400 font-black text-sm">Nick's Value</span>
-                      <span className="text-white font-black">{formatCurrency(currentStats.nickValue)}</span>
+                  {currentStats.partners.map(partner => (
+                    <div key={partner.id}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-${partner.color}-400 font-black text-sm`}>{partner.display_name}'s Value</span>
+                        <span className="text-white font-black">{formatCurrency(partner.value)}</span>
+                      </div>
+                      <div className="text-xs text-slate-400 font-medium">
+                        P/L: <span className={partner.pl >= 0 ? 'text-green-400' : 'text-red-400'}>
+                          {formatCurrency(partner.pl)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-xs text-slate-400 font-medium">
-                      P/L: <span className={currentStats.nickPL >= 0 ? 'text-green-400' : 'text-red-400'}>
-                        {formatCurrency(currentStats.nickPL)}
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-cyan-400 font-black text-sm">Joey's Value</span>
-                      <span className="text-white font-black">{formatCurrency(currentStats.joeyValue)}</span>
-                    </div>
-                    <div className="text-xs text-slate-400 font-medium">
-                      P/L: <span className={currentStats.joeyPL >= 0 ? 'text-green-400' : 'text-red-400'}>
-                        {formatCurrency(currentStats.joeyPL)}
-                      </span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1992,6 +1968,21 @@ function App() {
 
         {activeTab === 'settings' && (
           <div className="space-y-6">
+            {/* Manage Partners */}
+            <div className="bg-slate-800 border-2 border-slate-700 p-6">
+              <h3 className="text-lg font-black text-white uppercase mb-4">Manage Partners</h3>
+              <button
+                onClick={() => setShowManagePartners(true)}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-black py-4 border-2 border-green-500 flex items-center justify-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                MANAGE PARTNERS
+              </button>
+              <p className="text-slate-400 text-sm font-medium mt-3">
+                Add new partners, edit names and colors, or deactivate partners. Currently {partners.filter(p => p.active !== false).length} active partner(s).
+              </p>
+            </div>
+
             {/* Admin Panel */}
             <div className="bg-slate-800 border-2 border-slate-700 p-6">
               <h3 className="text-lg font-black text-white uppercase mb-4">Admin Controls</h3>
@@ -2012,7 +2003,10 @@ function App() {
             <div className="bg-slate-800 border-2 border-slate-700 p-6">
               <h3 className="text-lg font-black text-white uppercase mb-4">Restore to History Point</h3>
               <button
-                onClick={() => openDepositHistory('restore')}
+                onClick={() => {
+                  setDepositHistoryPerson('restore');
+                  setShowDepositHistory(true);
+                }}
                 disabled={loading || entries.length === 0}
                 className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-black py-4 border-2 border-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
@@ -2481,7 +2475,7 @@ function App() {
         {/* Admin Panel Modal */}
         {showAdminPanel && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-800 rounded-2xl p-8 max-w-2xl w-full border border-yellow-600 max-h-[90vh] overflow-y-auto">
+            <div className="bg-slate-800 rounded-2xl p-8 max-w-4xl w-full border border-yellow-600 max-h-[90vh] overflow-y-auto">
               <h3 className="text-2xl font-bold text-yellow-400 mb-2">⚙️ Admin Panel</h3>
               <p className="text-slate-300 text-sm mb-6">Manually adjust all system values. Use with caution!</p>
               
@@ -2521,34 +2515,6 @@ function App() {
                   </div>
                 </div>
 
-                {/* Capital Values */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-red-300 mb-2">
-                      Nick's Total Invested
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={adminNickCapital}
-                      onChange={(e) => setAdminNickCapital(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-700 border border-red-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-cyan-300 mb-2">
-                      Joey's Total Invested
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={adminJoeyCapital}
-                      onChange={(e) => setAdminJoeyCapital(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-700 border border-cyan-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    />
-                  </div>
-                </div>
-
                 {/* Portfolio Value */}
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -2563,62 +2529,77 @@ function App() {
                   />
                 </div>
 
-                {/* Current Values */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-red-300 mb-2">
-                      Nick's Current Value
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={adminNickValue}
-                      onChange={(e) => setAdminNickValue(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-700 border border-red-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      disabled={adjustmentMode === 'recalculate'}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-cyan-300 mb-2">
-                      Joey's Current Value
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={adminJoeyValue}
-                      onChange={(e) => setAdminJoeyValue(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-700 border border-cyan-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                      disabled={adjustmentMode === 'recalculate'}
-                    />
-                  </div>
-                </div>
-
-                {/* Ownership Percentages */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-red-300 mb-2">
-                      Nick's Ownership %
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={adminNickOwnership}
-                      onChange={(e) => setAdminNickOwnership(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-700 border border-red-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-cyan-300 mb-2">
-                      Joey's Ownership %
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={adminJoeyOwnership}
-                      onChange={(e) => setAdminJoeyOwnership(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-700 border border-cyan-600 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    />
-                  </div>
+                {/* Dynamic Partner Fields */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-bold text-white">Partner Values</h4>
+                  {partners.filter(p => p.active !== false).map(partner => (
+                    <div key={partner.id} className={`bg-slate-700/50 border-2 border-${partner.color}-600 rounded-lg p-4`}>
+                      <h5 className={`text-${partner.color}-400 font-bold mb-3 flex items-center gap-2`}>
+                        <div className={`w-6 h-6 rounded-full bg-${partner.color}-500`}></div>
+                        {partner.display_name}
+                      </h5>
+                      
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className={`block text-xs font-medium text-${partner.color}-300 mb-2`}>
+                            Total Invested
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={adminPartnerValues[partner.id]?.capital || '0'}
+                            onChange={(e) => setAdminPartnerValues({
+                              ...adminPartnerValues,
+                              [partner.id]: {
+                                ...adminPartnerValues[partner.id],
+                                capital: e.target.value
+                              }
+                            })}
+                            className={`w-full px-3 py-2 bg-slate-700 border border-${partner.color}-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-${partner.color}-500`}
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className={`block text-xs font-medium text-${partner.color}-300 mb-2`}>
+                            Current Value
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={adminPartnerValues[partner.id]?.value || '0'}
+                            onChange={(e) => setAdminPartnerValues({
+                              ...adminPartnerValues,
+                              [partner.id]: {
+                                ...adminPartnerValues[partner.id],
+                                value: e.target.value
+                              }
+                            })}
+                            disabled={adjustmentMode === 'recalculate'}
+                            className={`w-full px-3 py-2 bg-slate-700 border border-${partner.color}-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-${partner.color}-500 disabled:opacity-50`}
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className={`block text-xs font-medium text-${partner.color}-300 mb-2`}>
+                            Ownership %
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={adminPartnerValues[partner.id]?.ownership || '0'}
+                            onChange={(e) => setAdminPartnerValues({
+                              ...adminPartnerValues,
+                              [partner.id]: {
+                                ...adminPartnerValues[partner.id],
+                                ownership: e.target.value
+                              }
+                            })}
+                            className={`w-full px-3 py-2 bg-slate-700 border border-${partner.color}-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-${partner.color}-500`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Summary */}
@@ -2626,19 +2607,19 @@ function App() {
                   <div className="flex justify-between">
                     <span className="text-slate-400">Sum of Values:</span>
                     <span className={`font-medium ${
-                      Math.abs((parseFloat(adminNickValue) || 0) + (parseFloat(adminJoeyValue) || 0) - (parseFloat(adminPortfolio) || 0)) < 0.01
+                      Math.abs(Object.values(adminPartnerValues).reduce((sum, p) => sum + (parseFloat(p.value) || 0), 0) - (parseFloat(adminPortfolio) || 0)) < 0.01
                         ? 'text-green-400' : 'text-yellow-400'
                     }`}>
-                      {formatCurrency((parseFloat(adminNickValue) || 0) + (parseFloat(adminJoeyValue) || 0))}
+                      {formatCurrency(Object.values(adminPartnerValues).reduce((sum, p) => sum + (parseFloat(p.value) || 0), 0))}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Sum of Ownership:</span>
                     <span className={`font-medium ${
-                      Math.abs((parseFloat(adminNickOwnership) || 0) + (parseFloat(adminJoeyOwnership) || 0) - 100) < 0.1
+                      Math.abs(Object.values(adminPartnerValues).reduce((sum, p) => sum + (parseFloat(p.ownership) || 0), 0) - 100) < 0.1
                         ? 'text-green-400' : 'text-yellow-400'
                     }`}>
-                      {((parseFloat(adminNickOwnership) || 0) + (parseFloat(adminJoeyOwnership) || 0)).toFixed(2)}%
+                      {Object.values(adminPartnerValues).reduce((sum, p) => sum + (parseFloat(p.ownership) || 0), 0).toFixed(2)}%
                     </span>
                   </div>
                 </div>
@@ -2739,6 +2720,378 @@ function App() {
                     className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-lg transition-all"
                   >
                     Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Manage Partners Modal */}
+        {showManagePartners && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-800 rounded-2xl p-8 max-w-3xl w-full border border-green-600 max-h-[90vh] overflow-y-auto">
+              <h3 className="text-2xl font-bold text-green-400 mb-6">👥 Manage Partners</h3>
+              
+              {/* Add Partner Button */}
+              <button
+                onClick={() => setShowAddPartner(true)}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg mb-6 flex items-center justify-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Add New Partner
+              </button>
+
+              {/* Partners List */}
+              <div className="space-y-4">
+                {partners.map(partner => (
+                  <div 
+                    key={partner.id}
+                    className={`bg-slate-700 rounded-lg p-4 border-2 ${
+                      partner.active === false ? 'border-slate-600 opacity-50' : `border-${partner.color}-600`
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-4 h-4 rounded-full bg-${partner.color}-500`}></div>
+                          <div>
+                            <h4 className="text-white font-bold">{partner.display_name}</h4>
+                            <p className="text-slate-400 text-sm">@{partner.name}</p>
+                          </div>
+                        </div>
+                        <div className="mt-2 text-sm">
+                          <span className="text-slate-400">Total Invested: </span>
+                          <span className="text-white font-bold">{formatCurrency(partner.total_invested)}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setEditingPartner(partner)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                        >
+                          Edit
+                        </button>
+                        {partner.active !== false ? (
+                          <button
+                            onClick={async () => {
+                              if (confirm(`Deactivate ${partner.display_name}? They won't appear in new transactions.`)) {
+                                try {
+                                  setLoading(true);
+                                  const response = await fetch(`${API_URL}/manage-partners`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ id: partner.id, active: false })
+                                  });
+                                  
+                                  if (!response.ok) {
+                                    const errorData = await response.json();
+                                    throw new Error(errorData.error || 'Failed to deactivate partner');
+                                  }
+                                  
+                                  await loadData();
+                                } catch (err) {
+                                  console.error('Deactivate error:', err);
+                                  alert('Failed to deactivate partner: ' + err.message);
+                                } finally {
+                                  setLoading(false);
+                                }
+                              }
+                            }}
+                            disabled={loading}
+                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+                          >
+                            Deactivate
+                          </button>
+                        ) : (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  setLoading(true);
+                                  const response = await fetch(`${API_URL}/manage-partners`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ id: partner.id, active: true })
+                                  });
+                                  
+                                  if (!response.ok) {
+                                    const errorData = await response.json();
+                                    throw new Error(errorData.error || 'Failed to reactivate partner');
+                                  }
+                                  
+                                  await loadData();
+                                } catch (err) {
+                                  console.error('Reactivate error:', err);
+                                  alert('Failed to reactivate partner: ' + err.message);
+                                } finally {
+                                  setLoading(false);
+                                }
+                              }}
+                              disabled={loading}
+                              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+                            >
+                              Reactivate
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const confirmFirst = window.confirm(
+                                  `⚠️ WARNING: Permanently delete ${partner.display_name}?\n\n` +
+                                  `This will:\n` +
+                                  `• Remove all partner data from the database\n` +
+                                  `• Delete all historical snapshots\n` +
+                                  `• Cannot be undone\n\n` +
+                                  `Are you absolutely sure?`
+                                );
+                                
+                                if (!confirmFirst) return;
+                                
+                                const confirmText = window.prompt(
+                                  `Type DELETE to confirm permanent deletion of ${partner.display_name}:`
+                                );
+                                
+                                if (confirmText !== 'DELETE') {
+                                  alert('Deletion cancelled - confirmation text did not match');
+                                  return;
+                                }
+                                
+                                try {
+                                  setLoading(true);
+                                  const response = await fetch(`${API_URL}/manage-partners`, {
+                                    method: 'DELETE',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ id: partner.id, permanent: true })
+                                  });
+                                  
+                                  if (!response.ok) {
+                                    const errorData = await response.json();
+                                    throw new Error(errorData.error || 'Failed to delete partner');
+                                  }
+                                  
+                                  alert(`${partner.display_name} has been permanently deleted`);
+                                  await loadData();
+                                } catch (err) {
+                                  console.error('Delete error:', err);
+                                  alert('Failed to delete partner: ' + err.message);
+                                } finally {
+                                  setLoading(false);
+                                }
+                              }}
+                              disabled={loading}
+                              className="bg-red-900 hover:bg-red-800 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 border-2 border-red-600"
+                              title="Permanently delete this partner - cannot be undone"
+                            >
+                              ⚠️ Delete Forever
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6">
+                <button
+                  onClick={() => setShowManagePartners(false)}
+                  className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-lg"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Partner Modal */}
+        {showAddPartner && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-4">
+            <div className="bg-slate-800 rounded-2xl p-8 max-w-md w-full border border-green-600">
+              <h3 className="text-2xl font-bold text-green-400 mb-6">➕ Add New Partner</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Username (lowercase, no spaces)
+                  </label>
+                  <input
+                    type="text"
+                    value={newPartnerName}
+                    onChange={(e) => setNewPartnerName(e.target.value.toLowerCase().replace(/\s/g, ''))}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="johndoe"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newPartnerDisplayName}
+                    onChange={(e) => setNewPartnerDisplayName(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="John Doe"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Color Theme
+                  </label>
+                  <select
+                    value={newPartnerColor}
+                    onChange={(e) => setNewPartnerColor(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="red">Red</option>
+                    <option value="blue">Blue</option>
+                    <option value="cyan">Cyan</option>
+                    <option value="green">Green</option>
+                    <option value="yellow">Yellow</option>
+                    <option value="purple">Purple</option>
+                    <option value="orange">Orange</option>
+                    <option value="pink">Pink</option>
+                    <option value="indigo">Indigo</option>
+                  </select>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowAddPartner(false);
+                      setNewPartnerName('');
+                      setNewPartnerDisplayName('');
+                      setNewPartnerColor('blue');
+                    }}
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!newPartnerName || !newPartnerDisplayName) {
+                        alert('Please fill in all fields');
+                        return;
+                      }
+                      try {
+                        setLoading(true);
+                        await fetch(`${API_URL}/manage-partners`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            name: newPartnerName,
+                            display_name: newPartnerDisplayName,
+                            color: newPartnerColor
+                          })
+                        });
+                        await loadData();
+                        setShowAddPartner(false);
+                        setNewPartnerName('');
+                        setNewPartnerDisplayName('');
+                        setNewPartnerColor('blue');
+                      } catch (err) {
+                        alert('Failed to add partner: ' + err.message);
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg disabled:opacity-50"
+                  >
+                    Add Partner
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Partner Modal */}
+        {editingPartner && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-4">
+            <div className="bg-slate-800 rounded-2xl p-8 max-w-md w-full border border-blue-600">
+              <h3 className="text-2xl font-bold text-blue-400 mb-6">✏️ Edit Partner</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Username (cannot be changed)
+                  </label>
+                  <input
+                    type="text"
+                    value={editingPartner.name}
+                    disabled
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editingPartner.display_name}
+                    onChange={(e) => setEditingPartner({...editingPartner, display_name: e.target.value})}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Color Theme
+                  </label>
+                  <select
+                    value={editingPartner.color}
+                    onChange={(e) => setEditingPartner({...editingPartner, color: e.target.value})}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="red">Red</option>
+                    <option value="blue">Blue</option>
+                    <option value="cyan">Cyan</option>
+                    <option value="green">Green</option>
+                    <option value="yellow">Yellow</option>
+                    <option value="purple">Purple</option>
+                    <option value="orange">Orange</option>
+                    <option value="pink">Pink</option>
+                    <option value="indigo">Indigo</option>
+                  </select>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => setEditingPartner(null)}
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        setLoading(true);
+                        await fetch(`${API_URL}/manage-partners`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            id: editingPartner.id,
+                            display_name: editingPartner.display_name,
+                            color: editingPartner.color
+                          })
+                        });
+                        await loadData();
+                        setEditingPartner(null);
+                      } catch (err) {
+                        alert('Failed to update partner: ' + err.message);
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg disabled:opacity-50"
+                  >
+                    Save Changes
                   </button>
                 </div>
               </div>
